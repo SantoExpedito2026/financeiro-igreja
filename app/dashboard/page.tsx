@@ -72,7 +72,7 @@ export default function Dashboard() {
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 text-gray-700">Composição das Receitas</h2>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="300%">
               <PieChart>
                 <Pie data={dadosPizza} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
                   {dadosPizza.map((entry, index) => (
@@ -89,7 +89,7 @@ export default function Dashboard() {
         <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
           <h2 className="text-xl font-semibold mb-4 text-gray-700">Evolução Mensal</h2>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="300%">
               <LineChart data={dadosLinha}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="mes" />
