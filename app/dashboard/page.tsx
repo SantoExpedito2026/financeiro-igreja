@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts';
 
 export default function Dashboard() {
   const [transacoes, setTransacoes] = useState<any[]>([]);
@@ -71,12 +70,10 @@ export default function Dashboard() {
 
   if (loading) return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Paróquia...</div>;
 
-  // VALORES REAIS FIEDIGNOS FIXOS
   const saldoInicialCaixa = 3146.95;
   const saldoInicialBanco = 100675.04;
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
   
-  // Cálculos baseados no período FILTRADO para os cards e gráficos
   let entCaixa = 0, saiCaixa = 0, entBanco = 0, saiBanco = 0;
   transacoesFiltradas.forEach(t => {
     const v = Number(t.valor);
@@ -86,25 +83,7 @@ export default function Dashboard() {
 
   const totEntradas = entCaixa + entBanco;
   const totSaidas = saiCaixa + saiBanco;
-  
-  // Saldo Final acumulado considera o Saldo Inicial histórico + movimentações filtradas
   const saldoFinalTotal = saldoInicialTotal + totEntradas - totSaidas;
-
-  const dadosPizzaEntradas = transacoesFiltradas.filter(t => t.tipo === 'ENTRADA').reduce((acc: any[], t) => {
-    const n = t.categorias?.nome || 'Outros';
-    const e = acc.find(i => i.name === n);
-    e ? e.value += Number(t.valor) : acc.push({ name: n, value: Number(t.valor) });
-    return acc;
-  }, []);
-
-  const dadosPizzaSaidas = transacoesFiltradas.filter(t => t.tipo === 'SAIDA').reduce((acc: any[], t) => {
-    const n = t.categorias?.nome || 'Outros';
-    const e = acc.find(i => i.name === n);
-    e ? e.value += Number(t.valor) : acc.push({ name: n, value: Number(t.valor) });
-    return acc;
-  }, []);
-
-  const CORES = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#EF4444', '#EC4899'];
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
@@ -113,7 +92,6 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-gray-800">Paróquia Santo Expedito</h1>
           <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
         </div>
-        {/* BOTÕES DE FILTRO DE DATA */}
         <div className="flex gap-2 bg-gray-200 p-1 rounded-lg self-start md:self-center">
           <button onClick={() => setFiltroPeriodo('tudo')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition ${filtroPeriodo === 'tudo' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>Tudo</button>
           <button onClick={() => setFiltroPeriodo('semana')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition ${filtroPeriodo === 'semana' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}>Esta Semana</button>
@@ -165,3 +143,22 @@ export default function Dashboard() {
           <p className="text-xs text-gray-400 uppercase">Saldo Inicial Total</p>
           <p className="text-xl text-gray-700">R$ {saldoInicialTotal.toFixed(2)}</p>
         </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200">
+          <p className="text-xs text-emerald-500 uppercase">Total Entradas</p>
+          <p className="text-xl text-emerald-600">R$ {totEntradas.toFixed(2)}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200">
+          <p className="text-xs text-rose-500 uppercase">Total Saídas</p>
+          <p className="text-xl text-rose-600">R$ {totSaidas.toFixed(2)}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200">
+          <p className="text-xs text-blue-500 uppercase">Saldo Final Estimado</p>
+          <p className="text-xl text-blue-600">R$ {saldoFinalTotal.toFixed(2)}</p>
+        </div>
+      </div>
+
+      {/* TABELA DE HISTÓRICO SIMPLES */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+        <h2 className="text-xl font-bold text-gray-700 mb-4">📋 Lançamentos Recentes</h2>
+        <table className="w-full text-left border-collapse">
+          <thead>
