@@ -27,6 +27,7 @@ interface Categoria {
 interface Conta {
   id: number;
   nome: string;
+  saldo_inicial: number;
 }
 
 export default function Dashboard() {
@@ -52,7 +53,7 @@ export default function Dashboard() {
 
     if (tData) setTransacoes(tData as any);
     if (cData) setCategorias(cData);
-    if (coData) setContas(coData);
+    if (coData) setContas(coData as any);
     setLoading(false);
   }
 
@@ -93,6 +94,32 @@ export default function Dashboard() {
 
   if (loading) return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Paróquia...</div>;
 
+  // Cálculos de fluxo por conta específica
+  const saldoInicialTotal = contas.reduce((acc, c) => acc + Number(c.saldo_inicial), 0);
+  
+  let entradasCaixa = 0, saidasCaixa = 0, saldoInicialCaixa = 0;
+  let entradasBanco = 0, saidasBanco = 0, saldoInicialBanco = 0;
+
+  contas.forEach(c => {
+    if (c.nome.includes('Caixa')) saldoInicialCaixa = Number(c.saldo_inicial);
+    if (c.nome.includes('Banco') || c.nome.includes('Corrente')) saldoInicialBanco = Number(c.saldo_inicial);
+  });
+
+  transacoes.forEach(t => {
+    const v = Number(t.valor);
+    if (t.tipo === 'ENTRADA') {
+      if (t.conta_id === 1) entradasCaixa += v;
+      else entradasBanco += v;
+    } else {
+      if (t.conta_id === 1) saidasCaixa += v;
+      else saidasBanco += v;
+    }
+  });
+
+  const totalEntradasGlobal = entradasCaixa + entradasBanco;
+  const totalSaidasGlobal = saidasCaixa + saidasBanco;
+  const saldoFinalGlobal = saldoInicialTotal + totalEntradasGlobal - totalSaidasGlobal;
+
   const dadosEntradas = transacoes
     .filter(t => t.tipo === 'ENTRADA')
     .reduce((acc: any[], atual) => {
@@ -113,14 +140,7 @@ export default function Dashboard() {
       return acc;
     }, []);
 
-  const totaisGerais = transacoes.reduce((acc, atual) => {
-    if (atual.tipo === 'ENTRADA') acc.entradas += Number(atual.valor);
-    if (atual.tipo === 'SAIDA') acc.saidas += Number(atual.valor);
-    return acc;
-  }, { entradas: 0, saidas: 0 });
-
-  const dadosBarras = [{ name: 'Fluxo Geral', Entradas: totaisGerais.entradas, Saídas: totaisGerais.saidas }];
-
+  const dadosBarras = [{ name: 'Balanço Paroquial', Entradas: totalEntradasGlobal, Saídas: totalSaidasGlobal }];
   const CORES_ENTRADAS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
   const CORES_SAIDAS = ['#EF4444', '#F97316', '#F59E0B', '#6366F1', '#EC4899'];
 
@@ -131,6 +151,7 @@ export default function Dashboard() {
         <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
       </div>
 
+      {/* FORMULÁRIO DE LANÇAMENTO */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -141,7 +162,6 @@ export default function Dashboard() {
               <option value="SAIDA">SAIDA (Despesas/Custos)</option>
             </select>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Categoria Paroquial</label>
             <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 text-gray-700">
@@ -151,7 +171,6 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Conta de Origem/Destino</label>
             <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 text-gray-700">
@@ -161,7 +180,6 @@ export default function Dashboard() {
               ))}
             </select>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Forma de Pagamento</label>
             <select value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 text-gray-700">
@@ -171,22 +189,18 @@ export default function Dashboard() {
               <option value="Boleto/Transferência">Boleto/Transferência</option>
             </select>
           </div>
-
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-600 mb-1">Nome / Observação / Descrição</label>
             <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex: Dízimo Família Silva" className="w-full border border-gray-300 p-2 rounded-lg text-gray-700" />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Valor (R$)</label>
             <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" className="w-full border border-gray-300 p-2 rounded-lg text-gray-700" />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Data da Transação</label>
             <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg text-gray-700" />
           </div>
-
           <div className="md:col-span-3 lg:col-span-4 flex justify-end pt-2">
             <button type="submit" disabled={salvando} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition disabled:bg-gray-400">
               {salvando ? 'Salvando lançamento...' : '✨ Registrar no Fluxo de Caixa'}
@@ -195,89 +209,11 @@ export default function Dashboard() {
         </form>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-green-500">
-          <p className="text-sm font-medium text-gray-400 uppercase">Total de Entradas</p>
-          <p className="text-2xl font-bold text-green-600">R$ {totaisGerais.entradas.toFixed(2)}</p>
+      {/* CARDS GERAIS DE CONSOLIDADO PAROQUIAL */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+          <p className="text-xs font-semibold text-gray-400 uppercase">Saldo Inicial Total</p>
+          <p className="text-xl font-bold text-gray-700">R$ {saldoInicialTotal.toFixed(2)}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-red-500">
-          <p className="text-sm font-medium text-gray-400 uppercase">Total de Saídas</p>
-          <p className="text-2xl font-bold text-red-500">R$ {totaisGerais.saidas.toFixed(2)}</p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-blue-500">
-          <p className="text-sm font-medium text-gray-400 uppercase">Saldo Paroquial</p>
-          <p className="text-2xl font-bold text-blue-600">R$ {(totaisGerais.entradas - totaisGerais.saidas).toFixed(2)}</p>
-        </div>
-      </div>
- <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-xl font-semibold mb-4 text-gray-700">Composição das Entradas</h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie data={dadosEntradas} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4} dataKey="value">
-                  {dadosEntradas.map((entry, index) => <Cell key={`cell-${index}`} fill={CORES_ENTRADAS[index % CORES_ENTRADAS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-          <h2 className="text-xl font-semibold mb-4 text-gray-700">Composição das Despesas</h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie data={dadosSaidas} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4} dataKey="value">
-                  {dadosSaidas.map((entry, index) => <Cell key={`cell-${index}`} fill={CORES_SAIDAS[index % CORES_SAIDAS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(value) => `R$ ${Number(value).toFixed(2)}`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-700 mb-4">📊 Histórico Detalhado do Fluxo de Caixa</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-100 text-gray-600 uppercase text-xs tracking-wider">
-                <th className="p-3 rounded-l-lg">Data</th>
-                <th className="p-3">Descrição / Histórico</th>
-                <th className="p-3">Categoria</th>
-                <th className="p-3">Conta</th>
-                <th className="p-3">Pagamento</th>
-                <th className="p-3 rounded-r-lg text-right">Valor</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
-              {transacoes.map((t) => (
-                <tr key={t.id} className="hover:bg-gray-50 transition">
-                  <td className="p-3 whitespace-nowrap font-medium text-gray-500">
-                    {new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}
-                  </td>
-                  <td className="p-3 font-semibold text-gray-800">{t.descricao}</td>
-                  <td className="p-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${t.tipo === 'ENTRADA' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                      {t.categorias?.nome || 'Sem Categoria'}
-                    </span>
-                  </td>
-                  <td className="p-3 text-gray-600 text-xs">{t.contas?.nome || 'Geral'}</td>
-                  <td className="p-3 text-gray-500 font-medium">{t.forma_pagamento}</td>
-                  <td className={`p-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-green-600' : 'text-red-500'}`}>
-                    {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 border-l-4 border-l-green-500">
+          <p className="text-xs font-semibold text-gray-400 uppercase">Total Entradas (+)</p>
