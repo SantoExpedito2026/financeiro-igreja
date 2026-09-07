@@ -94,8 +94,8 @@ export default function Dashboard() {
   if (loading) return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Paróquia...</div>;
 
   // VALORES REAIS FIEDIGNOS LANÇADOS DIRETAMENTE NO MOTOR DO SITE
-  const saldoInicialCaixa = 3146.95;    // Seu valor fidedigno de Caixa Físico
-  const saldoInicialBanco = 100675.04;  // Seu valor fidedigno de Conta Bancária
+  const saldoInicialCaixa = 3146.95;    // Seu dinheiro físico real
+  const saldoInicialBanco = 100675.04;  // Seu saldo bancário real
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
   
   let entradasCaixa = 0, saidasCaixa = 0;
@@ -161,7 +161,7 @@ export default function Dashboard() {
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Categoria Paroquial</label>
             <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 text-gray-700">
-              <option value="">Selecione uma option...</option>
+              <option value="">Selecione uma opção...</option>
               {categorias.filter(c => c.tipo === tipo).map(c => (
                 <option key={c.id} value={c.id}>{c.nome}</option>
               ))}
