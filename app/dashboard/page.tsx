@@ -159,6 +159,9 @@ export default function Dashboard() {
         </form>
       </div>
 
-      {/* CARDS GERAIS (INCLUINDO SOMA DOS DOIS CAIXAS NO SALDO REAL) */}
+      {/* CARDS GERAIS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-center font-bold">
-        <div className="bg-white p-4 rounded-xl border border-gray-200"><p className="text-xs text-gray-400 uppercase">Saldo Inicial Total</p><p className="text-xl text-gray-700">R$ {saldoInicialTotal.toFixed(2)}</p></div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200">
+          <p className="text-xs text-gray-400 uppercase">Saldo Inicial Total</p>
+          <p className="text-xl text-gray-700">R$ {saldoInicialTotal.toFixed(2)}</p>
+        </div>
