@@ -35,6 +35,7 @@ export default function Dashboard() {
   const [contas, setContas] = useState<Conta[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Estados do Formulário de Lançamento
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState('');
   const [tipo, setTipo] = useState<'ENTRADA' | 'SAIDA'>('ENTRADA');
@@ -93,6 +94,7 @@ export default function Dashboard() {
 
   if (loading) return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Paróquia...</div>;
 
+  // Processamento de dados dos gráficos
   const dadosEntradas = transacoes
     .filter(t => t.tipo === 'ENTRADA')
     .reduce((acc: any[], atual) => {
@@ -131,6 +133,7 @@ export default function Dashboard() {
         <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
       </div>
 
+      {/* FORMULÁRIO DE LANÇAMENTO VISUAL */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -195,6 +198,7 @@ export default function Dashboard() {
         </form>
       </div>
 
+      {/* CARDS DE RESUMO DO FLUXO */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-green-500">
           <p className="text-sm font-medium text-gray-400 uppercase">Total de Entradas</p>
@@ -205,14 +209,13 @@ export default function Dashboard() {
           <p className="text-2xl font-bold text-red-500">R$ {totaisGerais.saidas.toFixed(2)}</p>
         </div>
         <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-blue-500">
-          <p className="text-sm font-medium text-gray-400 uppercase">Saldo Acumulado</p>
+          <p className="text-sm font-medium text-gray-400 uppercase">Saldo Paroquial</p>
           <p className="text-2xl font-bold text-blue-600">R$ {(totaisGerais.entradas - totaisGerais.saidas).toFixed(2)}</p>
         </div>
       </div>
 
+      {/* GRÁFICOS DE ANÁLISE */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
           <h2 className="text-xl font-semibold mb-4 text-gray-700">Composição das Entradas</h2>
           <div className="h-64">
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
