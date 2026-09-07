@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 
 interface Transacao {
@@ -35,7 +35,6 @@ export default function Dashboard() {
   const [contas, setContas] = useState<Conta[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados do Formulário de Lançamento
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState('');
   const [tipo, setTipo] = useState<'ENTRADA' | 'SAIDA'>('ENTRADA');
@@ -61,7 +60,6 @@ export default function Dashboard() {
     carregarDados();
   }, []);
 
-  // Função para salvar um novo lançamento pelo formulário do site
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (!descricao || !valor || !categoriaId || !contaId) {
@@ -88,7 +86,6 @@ export default function Dashboard() {
       setDescricao('');
       setValor('');
       setCategoriaId('');
-      // Recarrega a tela com os novos dados e atualiza os gráficos automaticamente
       carregarDados();
     }
     setSalvando(false);
@@ -96,7 +93,6 @@ export default function Dashboard() {
 
   if (loading) return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Paróquia...</div>;
 
-  // Processamento de dados dos gráficos
   const dadosEntradas = transacoes
     .filter(t => t.tipo === 'ENTRADA')
     .reduce((acc: any[], atual) => {
@@ -130,20 +126,17 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8 bg-gray-50 min-h-screen font-sans">
-      <div className="border-b border-gray-200 pb-4 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Paróquia Santo Expedito</h1>
-          <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
-        </div>
+      <div className="border-b border-gray-200 pb-4">
+        <h1 className="text-3xl font-bold text-gray-800">Paróquia Santo Expedito</h1>
+        <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
       </div>
 
-      {/* FORMULÁRIO DE LANÇAMENTO VISUAL */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Tipo de Movimento</label>
-            <select value={tipo} onChange={(e) => { setTipo(e.target.value as any); setCategoriaId(''); }} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+            <select value={tipo} onChange={(e) => { setTipo(e.target.value as any); setCategoriaId(''); }} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 text-gray-700">
               <option value="ENTRADA">ENTRADA (Receitas/Dízimos)</option>
               <option value="SAIDA">SAIDA (Despesas/Custos)</option>
             </select>
@@ -151,7 +144,7 @@ export default function Dashboard() {
 
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Categoria Paroquial</label>
-            <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+            <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 text-gray-700">
               <option value="">Selecione uma opção...</option>
               {categorias.filter(c => c.tipo === tipo).map(c => (
                 <option key={c.id} value={c.id}>{c.nome}</option>
@@ -161,7 +154,7 @@ export default function Dashboard() {
 
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Conta de Origem/Destino</label>
-            <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+            <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 text-gray-700">
               <option value="">Selecione a conta...</option>
               {contas.map(c => (
                 <option key={c.id} value={c.id}>{c.nome}</option>
@@ -171,7 +164,7 @@ export default function Dashboard() {
 
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Forma de Pagamento</label>
-            <select value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+            <select value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 text-gray-700">
               <option value="Dinheiro">Dinheiro</option>
               <option value="PIX">PIX</option>
               <option value="Cartão">Cartão</option>
@@ -181,34 +174,45 @@ export default function Dashboard() {
 
           <div className="md:col-span-2">
             <label className="block text-sm font-medium text-gray-600 mb-1">Nome / Observação / Descrição</label>
-            <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex: Dízimo Família Silva ou Compra de Velas" className="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700" />
+            <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex: Dízimo Família Silva" className="w-full border border-gray-300 p-2 rounded-lg text-gray-700" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Valor (R$)</label>
-            <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" className="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700" />
+            <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" className="w-full border border-gray-300 p-2 rounded-lg text-gray-700" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Data da Transação</label>
-            <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700" />
+            <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg text-gray-700" />
           </div>
 
           <div className="md:col-span-3 lg:col-span-4 flex justify-end pt-2">
-            <button type="submit" disabled={salvando} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition shadow-sm disabled:bg-gray-400">
+            <button type="submit" disabled={salvando} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition disabled:bg-gray-400">
               {salvando ? 'Salvando lançamento...' : '✨ Registrar no Fluxo de Caixa'}
             </button>
           </div>
         </form>
       </div>
 
-      {/* CARDS DE RESUMO DO FLUXO */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-green-500">
           <p className="text-sm font-medium text-gray-400 uppercase">Total de Entradas</p>
           <p className="text-2xl font-bold text-green-600">R$ {totaisGerais.entradas.toFixed(2)}</p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-red-500">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-red-500">
           <p className="text-sm font-medium text-gray-400 uppercase">Total de Saídas</p>
           <p className="text-2xl font-bold text-red-500">R$ {totaisGerais.saidas.toFixed(2)}</p>
         </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-blue-500">
+          <p className="text-sm font-medium text-gray-400 uppercase">Saldo Acumulado</p>
+          <p className="text-2xl font-bold text-blue-600">R$ {(totaisGerais.entradas - totaisGerais.saidas).toFixed(2)}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+          <h2 className="text-xl font-semibold mb-4 text-gray-700">Composição das Entradas</h2>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
