@@ -27,7 +27,6 @@ interface Categoria {
 interface Conta {
   id: number;
   nome: string;
-  saldo_inicial: number;
 }
 
 export default function Dashboard() {
@@ -53,7 +52,7 @@ export default function Dashboard() {
 
     if (tData) setTransacoes(tData as any);
     if (cData) setCategorias(cData);
-    if (coData) setContas(coData as any);
+    if (coData) setContas(coData);
     setLoading(false);
   }
 
@@ -94,16 +93,13 @@ export default function Dashboard() {
 
   if (loading) return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Paróquia...</div>;
 
-  // Cálculos de fluxo por conta específica
-  const saldoInicialTotal = contas.reduce((acc, c) => acc + Number(c.saldo_inicial), 0);
+  // VALORES REAIS FIEDIGNOS LANÇADOS DIRETAMENTE NO MOTOR DO SITE
+  const saldoInicialCaixa = 3146.95;    // Seu valor fidedigno de Caixa Físico
+  const saldoInicialBanco = 100675.04;  // Seu valor fidedigno de Conta Bancária
+  const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
   
-  let entradasCaixa = 0, saidasCaixa = 0, saldoInicialCaixa = 0;
-  let entradasBanco = 0, saidasBanco = 0, saldoInicialBanco = 0;
-
-  contas.forEach(c => {
-    if (c.nome.includes('Caixa')) saldoInicialCaixa = Number(c.saldo_inicial);
-    if (c.nome.includes('Banco') || c.nome.includes('Corrente')) saldoInicialBanco = Number(c.saldo_inicial);
-  });
+  let entradasCaixa = 0, saidasCaixa = 0;
+  let entradasBanco = 0, saidasBanco = 0;
 
   transacoes.forEach(t => {
     const v = Number(t.valor);
@@ -165,7 +161,7 @@ export default function Dashboard() {
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Categoria Paroquial</label>
             <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="w-full border border-gray-300 p-2 rounded-lg bg-gray-50 text-gray-700">
-              <option value="">Selecione uma opção...</option>
+              <option value="">Selecione uma option...</option>
               {categorias.filter(c => c.tipo === tipo).map(c => (
                 <option key={c.id} value={c.id}>{c.nome}</option>
               ))}
@@ -217,3 +213,6 @@ export default function Dashboard() {
         </div>
         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 border-l-4 border-l-green-500">
           <p className="text-xs font-semibold text-gray-400 uppercase">Total Entradas (+)</p>
+          <p className="text-xl font-bold text-green-600">R$ {totalEntradasGlobal.toFixed(2)}</p>
+        </div>
+        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 border-l-4 border-l-red-500">
