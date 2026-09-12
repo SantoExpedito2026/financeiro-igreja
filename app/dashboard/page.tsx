@@ -30,14 +30,12 @@ export default function Dashboard() {
 
   // 1. Monitorar o estado do login do usuário
   useEffect(() => {
-    // Verifica se já tem uma sessão ativa no navegador
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSessao(session);
       if (session) carregarDados();
       else setLoading(false);
     });
 
-    // Escuta mudanças no login (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSessao(session);
       if (session) carregarDados();
@@ -72,10 +70,12 @@ export default function Dashboard() {
     }
   }
 
+  // 4. Carregar dados atualizados com ORDEM CRESCENTE por data ('ascending: true')
   async function carregarDados() {
     setLoading(true);
     try {
-      const { data: t } = await supabase.from('transacoes').select('*, categorias(nome), contas(nome)').order('data_transacao', { ascending: false });
+      // Ajustado para buscar de 'categorias' e 'contas' de forma segura e ordenar por data crescente
+      const { data: t } = await supabase.from('transacoes').select('*, categorias(nome), contas(nome)').order('data_transacao', { ascending: true });
       const { data: c } = await supabase.from('categorias').select('*');
       const { data: co } = await supabase.from('contas').select('*');
       if (t) setTransacoes(t);
@@ -222,7 +222,7 @@ export default function Dashboard() {
 
   const totaisCategorias: { [key: string]: { total: number; tipo: string } } = {};
   transacoesFiltradas.forEach(t => {
-    const nomeCat = t.categorias?.nome || 'Sem categoria';
+    const nomeCat = t.categorias?.nome || t.categories?.nome || 'Sem categoria';
     if (!totaisCategorias[nomeCat]) {
       totaisCategorias[nomeCat] = { total: 0, tipo: t.tipo };
     }
@@ -283,54 +283,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento Mensal</h3>
-          <span className="text-xs font-bold text-gray-400">Uso das Receitas: {porcentagemDespesas.toFixed(0)}%</span>
-        </div>
-        <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
-          <div className="h-full rounded-full transition-all duration-500 bg-emerald-500" style={{ width: `${porcentagemDespesas}%` }}></div>
-        </div>
-        <div className="flex justify-between text-xs text-gray-400 font-medium mt-2">
-          <p>🟢 Ideal: Despesas abaixo de 70%</p>
-          <p className={totalGeralSaidas > totalGeralEntradas ? "text-rose-500 font-bold" : ""}>
-            {totalGeralSaidas > totalGeralEntradas ? "⚠️ Atenção: Deficit no mês!" : "✅ Caixa em equilíbrio"}
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
-          <div className="space-y-2 text-sm">
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').map(([nome, c]) => (
-              <div key={nome} className="flex justify-between border-b pb-1">
-                <span className="text-gray-600 font-medium">{nome}</span>
-                <span className="text-emerald-600 font-bold">R$ {c.total.toFixed(2)}</span>
-              </div>
-            ))}
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').length === 0 && (
-              <p className="text-gray-400 text-xs italic">Nenhuma receita registrada neste mês.</p>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="text-sm font-bold text-rose-700 uppercase mb-3">💸 Saídas por Categoria</h3>
-          <div className="space-y-2 text-sm">
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([nome, c]) => (
-              <div key={nome} className="flex justify-between border-b pb-1">
-                <span className="text-gray-600 font-medium">{nome}</span>
-                <span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span>
-              </div>
-            ))}
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').length === 0 && (
-              <p className="text-gray-400 text-xs italic">Nenhuma despesa registrada neste mês.</p>
-            )}
-          </div>
-        </div>
-      </div>
-
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -382,7 +334,7 @@ export default function Dashboard() {
           </div>
           <div className="md:col-span-3 lg:col-span-4 flex justify-end pt-2">
             <button type="submit" disabled={salvando} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg disabled:bg-gray-400 transition">
-              {salvando ? 'Salvando...' : editandoId ? '✨ Actualizar Lançamento' : '✨ Registrar no Fluxo'}
+              {salvando ? 'Salvando...' : editandoId ? '✨ Atualizar Lançamento' : '✨ Registrar no Fluxo'}
             </button>
           </div>
         </form>
@@ -418,7 +370,7 @@ export default function Dashboard() {
               <tr key={t.id} className="hover:bg-gray-50">
                 <td className="py-3">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
                 <td className="py-3 font-medium text-gray-800">{t.descricao}</td>
-                <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
+                <td className="py-3">{t.categorias?.nome || t.categories?.nome || 'Sem categoria'}</td>
                 <td className="py-3">{t.contas?.nome || 'Sem conta'}</td>
                 <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
