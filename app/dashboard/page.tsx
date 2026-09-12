@@ -145,6 +145,8 @@ export default function Dashboard() {
   const saldoAtualCaixa = saldoInicialCaixa + totalEntradasCaixa - totalSaidasCaixa;
   const saldoAtualBanco = saldoInicialBanco + totalEntradasBanco - totalSaidasBanco;
   const saldoFinalTotal = saldoInicialTotal + totalGeralEntradas - totalGeralSaidas;
+  // Lógica para calcular a porcentagem de gastos em relação às receitas do mês
+  const porcentagemDespesas = totalGeralEntradas > 0 ? Math.min((totalGeralSaidas / totalGeralEntradas) * 100, 100) : 0;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
@@ -186,6 +188,29 @@ export default function Dashboard() {
         <div className="bg-rose-50 p-4 rounded-xl border border-rose-200">
           <p className="text-xs text-rose-700 uppercase">Total de Saídas no Período</p>
           <p className="text-2xl text-rose-600">- R$ {totalGeralSaidas.toFixed(2)}</p>
+        </div>
+      </div>
+      {/* PAINEL GRÁFICO VISUAL */}
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4 print:hidden">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento Mensal</h3>
+          <span className="text-xs font-bold text-gray-400">Uso das Receitas: {porcentagemDespesas.toFixed(0)}%</span>
+        </div>
+        
+        {/* Barra de Progresso Fundo */}
+        <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
+          {/* Barra Dinâmica de Gasto */}
+          <div 
+            className={`h-full rounded-full transition-all duration-500 ${porcentagemDespesas > 80 ? 'bg-rose-500' : porcentagemDespesas > 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+            style={{ width: `${porcentagemDespesas}%` }}
+          ></div>
+        </div>
+        
+        <div className="flex justify-between text-xs text-gray-400 font-medium">
+          <p>🟢 Ideal: Despesas abaixo de 70%</p>
+          <p className={totalGeralSaidas > totalGeralEntradas ? "text-rose-500 font-bold" : ""}>
+            {totalGeralSaidas > totalGeralEntradas ? "⚠️ Atenção: Deficit no mês!" : "✅ Caixa em equilíbrio"}
+          </p>
         </div>
       </div>
 
