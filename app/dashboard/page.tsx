@@ -66,6 +66,23 @@ export default function Dashboard() {
     }
   }
 
+  async function handleDeletar(id: number) {
+    if (!confirm('Deseja realmente excluir este lançamento do fluxo de caixa?')) {
+      return;
+    }
+    try {
+      const { error } = await supabase.from('transacoes').delete().eq('id', id);
+      if (error) {
+        alert('Erro ao excluir do banco: ' + error.message);
+      } else {
+        alert('Lançamento excluído com sucesso!');
+        carregarDados();
+      }
+    } catch (error) {
+      console.error("Erro na operação:", error);
+    }
+  }
+
   if (loading) {
     return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Paróquia...</div>;
   }
@@ -206,6 +223,7 @@ export default function Dashboard() {
               <th className="pb-3">Categoria</th>
               <th className="pb-3">Conta</th>
               <th className="pb-3 text-right">Valor</th>
+              <th className="pb-3 text-center">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y text-sm text-gray-600">
@@ -218,11 +236,16 @@ export default function Dashboard() {
                 <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
+                <td className="py-3 text-center">
+                  <button onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition">
+                    🗑️ Excluir
+                  </button>
+                </td>
               </tr>
             ))}
             {transacoesFiltradas.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
+                <td colSpan={6} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
               </tr>
             )}
           </tbody>
