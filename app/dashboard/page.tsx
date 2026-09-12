@@ -157,7 +157,7 @@ export default function Dashboard() {
             {/* CABEÇALHO COM LOGO PAROQUIAL */}
       <div className="border-b pb-4 flex items-center gap-4">
         <img 
-          src="/logo.png" 
+          src="/Logo.jpg" 
           alt="Logo da Paróquia" 
           className="h-16 w-16 object-contain rounded-lg" 
           onError={(e) => { e.currentTarget.style.display = 'none'; }} 
