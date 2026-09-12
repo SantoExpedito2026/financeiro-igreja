@@ -185,7 +185,6 @@ export default function Dashboard() {
           </div>
         </form>
       </div>
-
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📋 Lançamentos Recentes</h2>
         <table className="w-full text-left border-collapse">
@@ -201,3 +200,23 @@ export default function Dashboard() {
           <tbody className="divide-y text-sm text-gray-600">
             {transacoes.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50">
+                <td className="py-3">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                <td className="py-3 font-medium text-gray-800">{t.descricao}</td>
+                <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
+                <td className="py-3">{t.contas?.nome || 'Sem conta'}</td>
+                <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
+                </td>
+              </tr>
+            ))}
+            {transacoes.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
