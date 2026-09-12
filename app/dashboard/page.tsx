@@ -24,9 +24,13 @@ export default function Dashboard() {
   const [formaPagamento, setFormaPagamento] = useState('Dinheiro');
   const [dataTransacao, setDataTransacao] = useState(new Date().toISOString().substring(0, 10));
   const [salvando, setSalvando] = useState(false);
+  
+  // Estados dos Filtros Inteligentes
   const [mesFiltro, setMesFiltro] = useState(new Date().toISOString().substring(0, 7));
-  const [editandoId, setEditandoId] = useState<number | null>(null);
+  const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'ENTRADA' | 'SAIDA'>('TODOS');
   const [buscaTexto, setBuscaTexto] = useState('');
+  
+  const [editandoId, setEditandoId] = useState<number | null>(null);
 
   // 1. Monitorar o estado do login do usuário
   useEffect(() => {
@@ -70,11 +74,10 @@ export default function Dashboard() {
     }
   }
 
-  // 4. Carregar dados atualizados com ORDEM CRESCENTE por data ('ascending: true')
+  // 4. Carregar dados e ordenar por data crescente
   async function carregarDados() {
     setLoading(true);
     try {
-      // Ajustado para buscar de 'categorias' e 'contas' de forma segura e ordenar por data crescente
       const { data: t } = await supabase.from('transacoes').select('*, categorias(nome), contas(nome)').order('data_transacao', { ascending: true });
       const { data: c } = await supabase.from('categorias').select('*');
       const { data: co } = await supabase.from('contas').select('*');
@@ -140,6 +143,14 @@ export default function Dashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // Função para limpar todos os campos do formulário e sair do modo edição
+  function limparFormulario() {
+    setDescricao('');
+    setValor('');
+    setCategoriaId('');
+    setEditandoId(null);
+  }
+
   async function handleDeletar(id: number) {
     if (!confirm('Deseja realmente excluir este lançamento do fluxo de caixa?')) {
       return;
@@ -193,10 +204,12 @@ export default function Dashboard() {
   const saldoInicialBanco = 97743.09;
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
 
+  // Lógica de Filtro Combinado: Mês + Texto + Tipo de Movimentação (Entrada/Saída)
   const transacoesFiltradas = transacoes.filter(t => {
     const correspondeAoMes = t.data_transacao.startsWith(mesFiltro);
     const correspondeAoTexto = t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase());
-    return correspondeAoMes && correspondeAoTexto;
+    const correspondeAoTipo = filtroTipo === 'TODOS' ? true : t.tipo === filtroTipo;
+    return correspondeAoMes && correspondeAoTexto && correspondeAoTipo;
   });
 
   let totalEntradasCaixa = 0;
@@ -204,7 +217,8 @@ export default function Dashboard() {
   let totalEntradasBanco = 0;
   let totalSaidasBanco = 0;
 
-  transacoesFiltradas.forEach(t => {
+  // IMPORTANTE: Os totais dos cards no topo continuam somando o mês inteiro independente do botão clicado abaixo
+  transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
     const v = Number(t.valor);
     if (t.tipo === 'ENTRADA') {
       t.conta_id === 1 ? totalEntradasCaixa += v : totalEntradasBanco += v;
@@ -221,7 +235,7 @@ export default function Dashboard() {
   const porcentagemDespesas = totalGeralEntradas > 0 ? Math.min((totalGeralSaidas / totalGeralEntradas) * 100, 100) : 0;
 
   const totaisCategorias: { [key: string]: { total: number; tipo: string } } = {};
-  transacoesFiltradas.forEach(t => {
+  transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
     const nomeCat = t.categorias?.nome || t.categories?.nome || 'Sem categoria';
     if (!totaisCategorias[nomeCat]) {
       totaisCategorias[nomeCat] = { total: 0, tipo: t.tipo };
@@ -283,7 +297,55 @@ export default function Dashboard() {
         </div>
       </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento Mensal</h3>
+          <span className="text-xs font-bold text-gray-400">Uso das Receitas: {porcentagemDespesas.toFixed(0)}%</span>
+        </div>
+        <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
+          <div className="h-full rounded-full transition-all duration-500 bg-emerald-500" style={{ width: `${porcentagemDespesas}%` }}></div>
+        </div>
+        <div className="flex justify-between text-xs text-gray-400 font-medium mt-2">
+          <p>🟢 Ideal: Despesas abaixo de 70%</p>
+          <p className={totalGeralSaidas > totalGeralEntradas ? "text-rose-500 font-bold" : ""}>
+            {totalGeralSaidas > totalGeralEntradas ? "⚠️ Atenção: Deficit no mês!" : "✅ Caixa em equilíbrio"}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
+          <div className="space-y-2 text-sm">
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').map(([nome, c]) => (
+              <div key={nome} className="flex justify-between border-b pb-1">
+                <span className="text-gray-600 font-medium">{nome}</span>
+                <span className="text-emerald-600 font-bold">R$ {c.total.toFixed(2)}</span>
+              </div>
+            ))}
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').length === 0 && (
+              <p className="text-gray-400 text-xs italic">Nenhuma receita registrada neste mês.</p>
+            )}
+          </div>
+        </div>
+
+                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <h3 className="text-sm font-bold text-rose-700 uppercase mb-3">💸 Saídas por Categoria</h3>
+          <div className="space-y-2 text-sm">
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([nome, c]) => (
+              <div key={nome} className="flex justify-between border-b pb-1">
+                <span className="text-gray-600 font-medium">{nome}</span>
+                <span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span>
+              </div>
+            ))}
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').length === 0 && (
+              <p className="text-gray-400 text-xs italic">Nenhuma despesa registrada neste mês.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <div>
@@ -332,18 +394,42 @@ export default function Dashboard() {
             <label className="block text-sm font-medium text-gray-600 mb-1">Data da Transação</label>
             <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="w-full border p-2 rounded-lg" />
           </div>
-          <div className="md:col-span-3 lg:col-span-4 flex justify-end pt-2">
+                   <div className="md:col-span-3 lg:col-span-4 flex justify-end gap-2 pt-2">
+            {(descricao || valor || editandoId) && (
+              <button 
+                type="button" 
+                onClick={limparFormulario} 
+                className="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-2 px-4 rounded-lg transition"
+              >
+                ❌ Cancelar
+              </button>
+            )}
             <button type="submit" disabled={salvando} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg disabled:bg-gray-400 transition">
               {salvando ? 'Salvando...' : editandoId ? '✨ Atualizar Lançamento' : '✨ Registrar no Fluxo'}
             </button>
           </div>
+
         </form>
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-        <div className="flex items-center justify-between mb-4 print:hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
-          <button onClick={() => window.print()} className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition flex items-center gap-2">
+          
+          {/* BOTÕES DE FILTRO POR TIPO (ENTRADAS / SAÍDAS) */}
+          <div className="flex bg-gray-100 p-1 rounded-lg border text-xs font-bold text-gray-600">
+            <button type="button" onClick={() => setFiltroTipo('TODOS')} className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'TODOS' ? 'bg-white text-gray-800 shadow-sm' : 'hover:text-gray-900'}`}>
+              Todos
+            </button>
+            <button type="button" onClick={() => setFiltroTipo('ENTRADA')} className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'ENTRADA' ? 'bg-emerald-600 text-white shadow-sm' : 'hover:text-emerald-600'}`}>
+              🟢 Entradas
+            </button>
+            <button type="button" onClick={() => setFiltroTipo('SAIDA')} className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'SAIDA' ? 'bg-rose-600 text-white shadow-sm' : 'hover:text-rose-600'}`}>
+              🔴 Saídas
+            </button>
+          </div>
+
+          <button onClick={() => window.print()} className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition flex items-center gap-2 self-end sm:self-auto">
             🖨️ Imprimir Relatório Mensal
           </button>
         </div>
