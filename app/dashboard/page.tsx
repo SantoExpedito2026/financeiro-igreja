@@ -356,7 +356,7 @@ export default function Dashboard() {
                 <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
-                <td className="py-3 text-center space-x-2 print:hidden">
+                                <td className="py-3 text-center space-x-2 print:hidden">
                   <button 
                     onClick={() => iniciarEdicao(t)} 
                     className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition"
@@ -364,3 +364,22 @@ export default function Dashboard() {
                     ✏️ Alterar
                   </button>
                   <button 
+                    onClick={() => handleDeletar(t.id)} 
+                    className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition"
+                  >
+                    🗑️ Excluir
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {transacoesFiltradas.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
