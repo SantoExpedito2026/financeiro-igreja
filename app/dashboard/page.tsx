@@ -17,6 +17,8 @@ export default function Dashboard() {
   const [dataTransacao, setDataTransacao] = useState(new Date().toISOString().substring(0, 10));
   const [salvando, setSalvando] = useState(false);
   const [mesFiltro, setMesFiltro] = useState(new Date().toISOString().substring(0, 7));
+  // Estados para controlar o modo de edição
+  const [editandoId, setEditandoId] = useState<number | null>(null);
 
   async function carregarDados() {
     setLoading(true);
@@ -44,7 +46,8 @@ export default function Dashboard() {
       return alert('Por favor, preencha todos os campos obrigatórios!');
     }
     setSalvando(true);
-    const { error } = await supabase.from('transacoes').insert([{
+
+    const dadosTransacao = {
       descricao,
       valor: parseFloat(valor),
       tipo,
@@ -53,17 +56,47 @@ export default function Dashboard() {
       forma_pagamento: formaPagamento,
       data_transacao: dataTransacao,
       status: 'CONCRETIZADO'
-    }]);
+    };
+
+    let error = null;
+
+    if (editandoId) {
+      // Se tiver um ID em edição, atualiza o lançamento existente
+      const { error: err } = await supabase.from('transacoes').update([dadosTransacao]).eq('id', editandoId);
+      error = err;
+    } else {
+      // Se não tiver ID em edição, insere um novo lançamento
+      const { error: err } = await supabase.from('transacoes').insert([dadosTransacao]);
+      error = err;
+    }
+
     setSalvando(false);
     if (error) {
-      alert('Erro ao salvar: ' + error.message);
+      alert('Erro ao salvar/atualizar: ' + error.message);
     } else {
-      alert('Lançamento registrado com sucesso!');
+      alert(editandoId ? 'Lançamento atualizado com sucesso!' : 'Lançamento registrado com sucesso!');
+      // Limpa o formulário e sai do modo de edição
       setDescricao('');
       setValor('');
       setCategoriaId('');
+      setEditandoId(null);
       carregarDados();
     }
+  }
+
+  // Nova função para puxar os dados da tabela para o formulário no topo
+  function iniciarEdicao(t: any) {
+    setEditandoId(t.id);
+    setDescricao(t.descricao);
+    setValor(t.valor.toString());
+    setTipo(t.tipo);
+    setCategoriaId(t.categoria_id.toString());
+    setContaId(t.conta_id.toString());
+    setFormaPagamento(t.forma_pagamento);
+    setDataTransacao(t.data_transacao);
+    
+    // Rola a página suavemente para o formulário no topo
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function handleDeletar(id: number) {
@@ -207,7 +240,7 @@ export default function Dashboard() {
           </div>
           <div className="md:col-span-3 lg:col-span-4 flex justify-end pt-2">
             <button type="submit" disabled={salvando} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg disabled:bg-gray-400 transition">
-              {salvando ? 'Salvando...' : '✨ Registrar no Fluxo'}
+           {salvando ? 'Salvando...' : editandoId ? '✨ Atualizar Lançamento' : '✨ Registrar no Fluxo'}
             </button>
           </div>
         </form>
@@ -236,8 +269,17 @@ export default function Dashboard() {
                 <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
-                <td className="py-3 text-center">
-                  <button onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition">
+                <td className="py-3 text-center space-x-2">
+                  <button 
+                    onClick={() => iniciarEdicao(t)} 
+                    className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition"
+                  >
+                    ✏️ Alterar
+                  </button>
+                  <button 
+                    onClick={() => handleDeletar(t.id)} 
+                    className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition"
+                  >
                     🗑️ Excluir
                   </button>
                 </td>
