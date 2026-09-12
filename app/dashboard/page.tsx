@@ -19,6 +19,8 @@ export default function Dashboard() {
   const [mesFiltro, setMesFiltro] = useState(new Date().toISOString().substring(0, 7));
   // Estados para controlar o modo de edição
   const [editandoId, setEditandoId] = useState<number | null>(null);
+  // Estado para armazenar o termo digitado na busca por texto
+  const [buscaTexto, setBuscaTexto] = useState('');
 
   async function carregarDados() {
     setLoading(true);
@@ -124,7 +126,12 @@ export default function Dashboard() {
   const saldoInicialBanco = 97743.09;
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
 
-  const transacoesFiltradas = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro));
+    // Filtra as transações primeiro pelo mês e depois pelo texto digitado na busca
+  const transacoesFiltradas = transacoes.filter(t => {
+    const correspondeAoMes = t.data_transacao.startsWith(mesFiltro);
+    const correspondeAoTexto = t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase());
+    return correspondeAoMes && correspondeAoTexto;
+  });
 
   let totalEntradasCaixa = 0;
   let totalSaidasCaixa = 0;
@@ -324,6 +331,16 @@ export default function Dashboard() {
             🖨️ Imprimir Relatório Mensal
           </button>
         </div>
+      {/* BARRA DE PESQUISA POR TEXTO */}
+      <div className="mb-4 print:hidden">
+        <input 
+          type="text"
+          value={buscaTexto}
+          onChange={(e) => setBuscaTexto(e.target.value)}
+          placeholder="🔍 Procurar por nome de fiel, fornecedor ou descrição..."
+          className="w-full border p-2 rounded-lg bg-white text-sm shadow-sm"
+        />
+      </div>
         <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Paróquia Santo Expedito</h2>
 
         <table className="w-full text-left border-collapse">
