@@ -189,7 +189,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <div>
@@ -247,7 +247,17 @@ export default function Dashboard() {
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-        <h2 className="text-xl font-bold text-gray-700 mb-4">📋 Lançamentos Recentes</h2>
+                <div className="flex items-center justify-between mb-4 print:hidden">
+          <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
+          <button 
+            onClick={() => window.print()} 
+            className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition flex items-center gap-2"
+          >
+            🖨️ Imprimir Relatório Mensal
+          </button>
+        </div>
+        <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Paróquia Santo Expedito</h2>
+
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
@@ -256,7 +266,7 @@ export default function Dashboard() {
               <th className="pb-3">Categoria</th>
               <th className="pb-3">Conta</th>
               <th className="pb-3 text-right">Valor</th>
-              <th className="pb-3 text-center">Ações</th>
+              <th className="pb-3 text-center print:hidden">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y text-sm text-gray-600">
@@ -269,7 +279,7 @@ export default function Dashboard() {
                 <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
-                <td className="py-3 text-center space-x-2">
+                <td className="py-3 text-center space-x-2 print:hidden">
                   <button 
                     onClick={() => iniciarEdicao(t)} 
                     className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition"
