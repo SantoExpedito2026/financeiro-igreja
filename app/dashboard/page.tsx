@@ -160,7 +160,7 @@ export default function Dashboard() {
         <img 
           src="/Logo.jpg" 
           alt="Logo da Comunidade" 
-          className="h-28 w-28 object-contain rounded-lg" 
+          className="h-28 w-28 object-contain rounded-full mix-blend-multiply" 
           onError={(e) => { e.currentTarget.style.display = 'none'; }} 
         />
         <div>
