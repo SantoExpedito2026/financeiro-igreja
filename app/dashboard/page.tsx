@@ -154,9 +154,18 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
-      <div className="border-b pb-4">
-        <h1 className="text-3xl font-bold text-gray-800">Paróquia Santo Expedito</h1>
-        <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
+            {/* CABEÇALHO COM LOGO PAROQUIAL */}
+      <div className="border-b pb-4 flex items-center gap-4">
+        <img 
+          src="/logo.png" 
+          alt="Logo da Paróquia" 
+          className="h-16 w-16 object-contain rounded-lg" 
+          onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+        />
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Paróquia Santo Expedito</h1>
+          <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
