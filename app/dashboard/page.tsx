@@ -3,13 +3,11 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 export default function Dashboard() {
-  // Estados para armazenar os dados do banco
   const [transacoes, setTransacoes] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [contas, setContas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados para as informações do formulário de novos lançamentos
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState('');
   const [tipo, setTipo] = useState<'ENTRADA' | 'SAIDA'>('ENTRADA');
@@ -19,14 +17,12 @@ export default function Dashboard() {
   const [dataTransacao, setDataTransacao] = useState(new Date().toISOString().substring(0, 10));
   const [salvando, setSalvando] = useState(false);
 
-  // 1. Função para buscar todos os dados no Supabase
   async function carregarDados() {
     setLoading(true);
     try {
       const { data: t } = await supabase.from('transacoes').select('*, categorias(nome), contas(nome)').order('data_transacao', { ascending: false });
       const { data: c } = await supabase.from('categorias').select('*');
       const { data: co } = await supabase.from('contas').select('*');
-      
       if (t) setTransacoes(t);
       if (c) setCategorias(c);
       if (co) setContas(co);
@@ -41,13 +37,11 @@ export default function Dashboard() {
     carregarDados();
   }, []);
 
-  // 2. Função para salvar um novo lançamento administrativo
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (!descricao || !valor || !categoriaId || !contaId) {
       return alert('Por favor, preencha todos os campos obrigatórios!');
     }
-
     setSalvando(true);
     const { error } = await supabase.from('transacoes').insert([{
       descricao,
@@ -59,18 +53,14 @@ export default function Dashboard() {
       data_transacao: dataTransacao,
       status: 'CONCRETIZADO'
     }]);
-
     setSalvando(false);
-
     if (error) {
       alert('Erro ao salvar: ' + error.message);
     } else {
       alert('Lançamento registrado com sucesso!');
-      // Limpa o formulário
       setDescricao('');
       setValor('');
       setCategoriaId('');
-      // Atualiza a tela com as novas informações
       carregarDados();
     }
   }
@@ -79,16 +69,10 @@ export default function Dashboard() {
     return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Paróquia...</div>;
   }
 
-  // ==========================================
-  // LÓGICA DO FLUXO DE CAIXA (BASEADO NO PDF)
-  // ==========================================
-  
-  // Saldos finais de Agosto que viram os saldos Iniciais de Setembro
   const saldoInicialCaixa = 3146.95;
   const saldoInicialBanco = 97743.09;
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
 
-  // Variáveis para somar o que aconteceu no mês atual
   let totalEntradasCaixa = 0;
   let totalSaidasCaixa = 0;
   let totalEntradasBanco = 0;
@@ -97,32 +81,25 @@ export default function Dashboard() {
   transacoes.forEach(t => {
     const v = Number(t.valor);
     if (t.tipo === 'ENTRADA') {
-      // Se conta_id for 1 vai pro Caixa, se for 2 (ou outro) vai pro Banco
       t.conta_id === 1 ? totalEntradasCaixa += v : totalEntradasBanco += v;
     } else {
       t.conta_id === 1 ? totalSaidasCaixa += v : totalSaidasBanco += v;
     }
   });
 
-  // Cálculos Consolidados Gerais
   const totalGeralEntradas = totalEntradasCaixa + totalEntradasBanco;
   const totalGeralSaidas = totalSaidasCaixa + totalSaidasBanco;
-  
-  // Saldos Finais Dinâmicos
   const saldoAtualCaixa = saldoInicialCaixa + totalEntradasCaixa - totalSaidasCaixa;
   const saldoAtualBanco = saldoInicialBanco + totalEntradasBanco - totalSaidasBanco;
   const saldoFinalTotal = saldoInicialTotal + totalGeralEntradas - totalGeralSaidas;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
-      
-      {/* CABEÇALHO */}
       <div className="border-b pb-4">
         <h1 className="text-3xl font-bold text-gray-800">Paróquia Santo Expedito</h1>
         <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
       </div>
 
-      {/* PAINEL DE SALDOS (CARDS) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
@@ -141,7 +118,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* RESUMO DE ENTRADAS E SAÍDAS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center font-bold">
         <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
           <p className="text-xs text-emerald-700 uppercase">Total de Entradas no Período</p>
@@ -153,7 +129,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* FORMULÁRIO DE LANÇAMENTO */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -209,7 +184,8 @@ export default function Dashboard() {
             </button>
           </div>
         </form>
-      {/* HISTÓRICO DE LANÇAMENTOS */}
+      </div>
+
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📋 Lançamentos Recentes</h2>
         <table className="w-full text-left border-collapse">
@@ -225,24 +201,3 @@ export default function Dashboard() {
           <tbody className="divide-y text-sm text-gray-600">
             {transacoes.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50">
-                <td className="py-3">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                <td className="py-3 font-medium text-gray-800">{t.descricao}</td>
-                <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
-                <td className="py-3">{t.contas?.nome || 'Sem conta'}</td>
-                <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
-                </td>
-              </tr>
-            ))}
-            {transacoes.length === 0 && (
-              <tr>
-                <td colSpan={5} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-    </div>
-  );
-}
