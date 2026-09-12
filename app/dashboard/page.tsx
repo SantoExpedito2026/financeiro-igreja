@@ -159,7 +159,7 @@ export default function Dashboard() {
         <img 
           src="/Logo.jpg" 
           alt="Logo da Paróquia" 
-          className="h-16 w-16 object-contain rounded-lg" 
+          className="h-28 w-28 object-contain rounded-lg" 
           onError={(e) => { e.currentTarget.style.display = 'none'; }} 
         />
         <div>
