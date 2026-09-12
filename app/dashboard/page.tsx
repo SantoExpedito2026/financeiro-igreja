@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [formaPagamento, setFormaPagamento] = useState('Dinheiro');
   const [dataTransacao, setDataTransacao] = useState(new Date().toISOString().substring(0, 10));
   const [salvando, setSalvando] = useState(false);
+  const [mesFiltro, setMesFiltro] = useState(new Date().toISOString().substring(0, 7));
 
   async function carregarDados() {
     setLoading(true);
@@ -73,12 +74,14 @@ export default function Dashboard() {
   const saldoInicialBanco = 97743.09;
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
 
+  const transacoesFiltradas = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro));
+
   let totalEntradasCaixa = 0;
   let totalSaidasCaixa = 0;
   let totalEntradasBanco = 0;
   let totalSaidasBanco = 0;
 
-  transacoes.forEach(t => {
+  transacoesFiltradas.forEach(t => {
     const v = Number(t.valor);
     if (t.tipo === 'ENTRADA') {
       t.conta_id === 1 ? totalEntradasCaixa += v : totalEntradasBanco += v;
@@ -100,6 +103,13 @@ export default function Dashboard() {
         <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
       </div>
 
+      <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-bold text-gray-500 uppercase">Período de Referência</h3>
+          <p className="text-xs text-gray-400">Escolha o mês para visualizar o fluxo de caixa paroquial</p>
+        </div>
+        <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg bg-gray-50 text-gray-700 font-bold" />
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
@@ -185,6 +195,7 @@ export default function Dashboard() {
           </div>
         </form>
       </div>
+
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📋 Lançamentos Recentes</h2>
         <table className="w-full text-left border-collapse">
@@ -198,7 +209,7 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody className="divide-y text-sm text-gray-600">
-            {transacoes.map((t) => (
+            {transacoesFiltradas.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50">
                 <td className="py-3">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
                 <td className="py-3 font-medium text-gray-800">{t.descricao}</td>
@@ -209,9 +220,9 @@ export default function Dashboard() {
                 </td>
               </tr>
             ))}
-            {transacoes.length === 0 && (
+            {transacoesFiltradas.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado.</td>
+                <td colSpan={5} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
               </tr>
             )}
           </tbody>
