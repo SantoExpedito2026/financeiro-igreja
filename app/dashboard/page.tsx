@@ -79,6 +79,7 @@ export default function Dashboard() {
       carregarDados();
     }
   }
+
   function iniciarEdicao(t: any) {
     setEditandoId(t.id);
     setDescricao(t.descricao);
@@ -154,19 +155,19 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
-            {/* CABEÇALHO COM LOGO PAROQUIAL */}
+      {/* CABEÇALHO ATUALIZADO COM NOME DA COMUNIDADE E TAMANHO AJUSTADO */}
       <div className="border-b pb-4 flex items-center gap-4">
         <img 
           src="/Logo.jpg" 
-          alt="Logo da Paróquia" 
-          className="h-40 w-40 object-contain rounded-lg" 
+          alt="Logo da Comunidade" 
+          className="h-28 w-28 object-contain rounded-lg" 
           onError={(e) => { e.currentTarget.style.display = 'none'; }} 
         />
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
           <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa da Comunidade</p>
         </div>
-
+      </div>
 
       <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
@@ -175,7 +176,6 @@ export default function Dashboard() {
         </div>
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg bg-gray-50 text-gray-700 font-bold" />
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
@@ -193,6 +193,7 @@ export default function Dashboard() {
           <p className="text-2xl text-gray-800 mt-1">R$ {saldoFinalTotal.toFixed(2)}</p>
         </div>
       </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center font-bold">
         <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
           <p className="text-xs text-emerald-700 uppercase">Total de Entradas no Período</p>
@@ -333,10 +334,9 @@ export default function Dashboard() {
           />
         </div>
 
-       <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
+        <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
 
-
-        <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
               <th className="pb-3">Data</th>
@@ -357,7 +357,7 @@ export default function Dashboard() {
                 <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
-                                <td className="py-3 text-center space-x-2 print:hidden">
+                <td className="py-3 text-center space-x-2 print:hidden">
                   <button 
                     onClick={() => iniciarEdicao(t)} 
                     className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition"
