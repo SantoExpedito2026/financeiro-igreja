@@ -3,11 +3,19 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 export default function Dashboard() {
+  // Estados de dados e carregamento
   const [transacoes, setTransacoes] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
   const [contas, setContas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Estados de controle de Autenticação (Login)
+  const [sessao, setSessao] = useState<any>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [autenticando, setAutenticando] = useState(false);
+
+  // Estados do formulário financeiro
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState('');
   const [tipo, setTipo] = useState<'ENTRADA' | 'SAIDA'>('ENTRADA');
@@ -19,6 +27,50 @@ export default function Dashboard() {
   const [mesFiltro, setMesFiltro] = useState(new Date().toISOString().substring(0, 7));
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [buscaTexto, setBuscaTexto] = useState('');
+
+  // 1. Monitorar o estado do login do usuário
+  useEffect(() => {
+    // Verifica se já tem uma sessão ativa no navegador
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSessao(session);
+      if (session) carregarDados();
+      else setLoading(false);
+    });
+
+    // Escuta mudanças no login (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessao(session);
+      if (session) carregarDados();
+      else {
+        setTransacoes([]);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // 2. Função para realizar o login por e-mail e senha
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !password) return alert('Preencha o e-mail e a senha!');
+    
+    setAutenticando(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setAutenticando(false);
+
+    if (error) {
+      alert('Erro ao acessar: Senha incorreta ou e-mail inválido.');
+    }
+  }
+
+  // 3. Função para fazer Logout (Sair com segurança)
+  async function handleLogout() {
+    if (confirm('Deseja realmente sair do sistema financeiro?')) {
+      setLoading(true);
+      await supabase.auth.signOut();
+    }
+  }
 
   async function carregarDados() {
     setLoading(true);
@@ -35,10 +87,6 @@ export default function Dashboard() {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    carregarDados();
-  }, []);
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
@@ -110,9 +158,37 @@ export default function Dashboard() {
   }
 
   if (loading) {
-    return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Paróquia...</div>;
+    return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Comunidade...</div>;
+  }
+  // TELA DE BLOQUEIO / FORMULÁRIO DE LOGIN (Exibido se o usuário não estiver logado)
+  if (!sessao) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 font-sans p-4">
+        <div className="bg-white p-8 rounded-xl shadow-md border max-w-md w-full space-y-6 text-center">
+          <div className="flex flex-col items-center space-y-2">
+            <img src="/Logo.jpg" alt="Logo Santo Expedito" className="h-24 w-24 object-contain rounded-full mix-blend-multiply" />
+            <h1 className="text-2xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
+            <p className="text-sm text-gray-500">Gestão Contábil e Fluxo de Caixa</p>
+          </div>
+          <form onSubmit={handleLogin} className="space-y-4 text-left">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">E-mail Administrativo</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="exemplo@gmail.com" className="w-full border p-2 rounded-lg" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Senha de Acesso</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full border p-2 rounded-lg" required />
+            </div>
+            <button type="submit" disabled={autenticando} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg transition disabled:bg-gray-400">
+              {autenticando ? 'Autenticando...' : '🔐 Acessar Sistema'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   }
 
+  // CÁLCULOS LÓGICOS DO PAINEL FINANCEIRO (PROTEGIDO)
   const saldoInicialCaixa = 3146.95;
   const saldoInicialBanco = 97743.09;
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
@@ -155,18 +231,19 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
-      {/* CABEÇALHO ATUALIZADO COM NOME DA COMUNIDADE E TAMANHO AJUSTADO */}
-      <div className="border-b pb-4 flex items-center gap-4">
-        <img 
-          src="/Logo.jpg" 
-          alt="Logo da Comunidade" 
-          className="h-28 w-28 object-contain rounded-full mix-blend-multiply" 
-          onError={(e) => { e.currentTarget.style.display = 'none'; }} 
-        />
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
-          <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa da Comunidade</p>
+      
+      {/* CABEÇALHO COM LOGO E BOTÃO DE LOGOUT */}
+      <div className="border-b pb-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <img src="/Logo.jpg" alt="Logo da Comunidade" className="h-28 w-28 object-contain rounded-full mix-blend-multiply" />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
+            <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa da Comunidade</p>
+          </div>
         </div>
+        <button onClick={handleLogout} className="bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-2 px-4 rounded-lg text-sm transition print:hidden flex items-center gap-1">
+          🚪 Sair
+        </button>
       </div>
 
       <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -176,6 +253,7 @@ export default function Dashboard() {
         </div>
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg bg-gray-50 text-gray-700 font-bold" />
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
@@ -211,10 +289,7 @@ export default function Dashboard() {
           <span className="text-xs font-bold text-gray-400">Uso das Receitas: {porcentagemDespesas.toFixed(0)}%</span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
-          <div 
-            className={`h-full rounded-full transition-all duration-500 ${porcentagemDespesas > 80 ? 'bg-rose-500' : porcentagemDespesas > 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-            style={{ width: `${porcentagemDespesas}%` }}
-          ></div>
+          <div className="h-full rounded-full transition-all duration-500 bg-emerald-500" style={{ width: `${porcentagemDespesas}%` }}></div>
         </div>
         <div className="flex justify-between text-xs text-gray-400 font-medium mt-2">
           <p>🟢 Ideal: Despesas abaixo de 70%</p>
@@ -256,7 +331,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <div>
@@ -307,7 +382,7 @@ export default function Dashboard() {
           </div>
           <div className="md:col-span-3 lg:col-span-4 flex justify-end pt-2">
             <button type="submit" disabled={salvando} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg disabled:bg-gray-400 transition">
-              {salvando ? 'Salvando...' : editandoId ? '✨ Atualizar Lançamento' : '✨ Registrar no Fluxo'}
+              {salvando ? 'Salvando...' : editandoId ? '✨ Actualizar Lançamento' : '✨ Registrar no Fluxo'}
             </button>
           </div>
         </form>
@@ -316,27 +391,18 @@ export default function Dashboard() {
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
         <div className="flex items-center justify-between mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
-          <button 
-            onClick={() => window.print()} 
-            className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition flex items-center gap-2"
-          >
+          <button onClick={() => window.print()} className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition flex items-center gap-2">
             🖨️ Imprimir Relatório Mensal
           </button>
         </div>
 
         <div className="mb-4 print:hidden">
-          <input 
-            type="text"
-            value={buscaTexto}
-            onChange={(e) => setBuscaTexto(e.target.value)}
-            placeholder="🔍 Procurar por nome de fiel, fornecedor ou descrição..."
-            className="w-full border p-2 rounded-lg bg-gray-50 text-sm shadow-sm"
-          />
+          <input type="text" value={buscaTexto} onChange={(e) => setBuscaTexto(e.target.value)} placeholder="🔍 Procurar por nome de fiel, fornecedor ou descrição..." className="w-full border p-2 rounded-lg bg-gray-50 text-sm shadow-sm" />
         </div>
 
         <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
 
-                <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
               <th className="pb-3">Data</th>
@@ -358,18 +424,8 @@ export default function Dashboard() {
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
                 <td className="py-3 text-center space-x-2 print:hidden">
-                  <button 
-                    onClick={() => iniciarEdicao(t)} 
-                    className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition"
-                  >
-                    ✏️ Alterar
-                  </button>
-                  <button 
-                    onClick={() => handleDeletar(t.id)} 
-                    className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition"
-                  >
-                    🗑️ Excluir
-                  </button>
+                  <button onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition">✏️ Alterar</button>
+                  <button onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition">🗑️ Excluir</button>
                 </td>
               </tr>
             ))}
