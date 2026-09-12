@@ -131,6 +131,7 @@ export default function Dashboard() {
     }
   }
 
+  // CORREÇÃO 1: Removido o window.scrollTo para a página não pular para o topo ao editar
   function iniciarEdicao(t: any) {
     setEditandoId(t.id);
     setDescricao(t.descricao);
@@ -140,10 +141,8 @@ export default function Dashboard() {
     setContaId(t.conta_id.toString());
     setFormaPagamento(t.forma_pagamento);
     setDataTransacao(t.data_transacao);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Função para limpar todos os campos do formulário e sair do modo edição
   function limparFormulario() {
     setDescricao('');
     setValor('');
@@ -204,7 +203,6 @@ export default function Dashboard() {
   const saldoInicialBanco = 97743.09;
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
 
-  // Lógica de Filtro Combinado: Mês + Texto + Tipo de Movimentação (Entrada/Saída)
   const transacoesFiltradas = transacoes.filter(t => {
     const correspondeAoMes = t.data_transacao.startsWith(mesFiltro);
     const correspondeAoTexto = t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase());
@@ -217,7 +215,6 @@ export default function Dashboard() {
   let totalEntradasBanco = 0;
   let totalSaidasBanco = 0;
 
-  // IMPORTANTE: Os totais dos cards no topo continuam somando o mês inteiro independente do botão clicado abaixo
   transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
     const v = Number(t.valor);
     if (t.tipo === 'ENTRADA') {
@@ -329,7 +326,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
           <h3 className="text-sm font-bold text-rose-700 uppercase mb-3">💸 Saídas por Categoria</h3>
           <div className="space-y-2 text-sm">
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([nome, c]) => (
@@ -345,7 +342,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <div>
@@ -394,13 +391,9 @@ export default function Dashboard() {
             <label className="block text-sm font-medium text-gray-600 mb-1">Data da Transação</label>
             <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="w-full border p-2 rounded-lg" />
           </div>
-                   <div className="md:col-span-3 lg:col-span-4 flex justify-end gap-2 pt-2">
+          <div className="md:col-span-3 lg:col-span-4 flex justify-end gap-2 pt-2">
             {(descricao || valor || editandoId) && (
-              <button 
-                type="button" 
-                onClick={limparFormulario} 
-                className="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-2 px-4 rounded-lg transition"
-              >
+              <button type="button" onClick={limparFormulario} className="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-2 px-4 rounded-lg transition">
                 ❌ Cancelar
               </button>
             )}
@@ -408,7 +401,6 @@ export default function Dashboard() {
               {salvando ? 'Salvando...' : editandoId ? '✨ Atualizar Lançamento' : '✨ Registrar no Fluxo'}
             </button>
           </div>
-
         </form>
       </div>
 
@@ -416,7 +408,6 @@ export default function Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
           
-          {/* BOTÕES DE FILTRO POR TIPO (ENTRADAS / SAÍDAS) */}
           <div className="flex bg-gray-100 p-1 rounded-lg border text-xs font-bold text-gray-600">
             <button type="button" onClick={() => setFiltroTipo('TODOS')} className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'TODOS' ? 'bg-white text-gray-800 shadow-sm' : 'hover:text-gray-900'}`}>
               Todos
@@ -440,30 +431,33 @@ export default function Dashboard() {
 
         <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
 
-        <table className="w-full text-left border-collapse">
+        {/* Tabela reestruturada e espaçada com larguras fixas em porcentagem */}
+        <table className="w-full text-left border-collapse table-fixed">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
-              <th className="pb-3">Data</th>
-              <th className="pb-3">Descrição</th>
-              <th className="pb-3">Categoria</th>
-              <th className="pb-3">Conta</th>
-              <th className="pb-3 text-right">Valor</th>
-              <th className="pb-3 text-center print:hidden">Ações</th>
+              <th className="pb-3 w-[12%]">Data</th>
+              <th className="pb-3 w-[33%]">Descrição</th>
+              <th className="pb-3 w-[20%]">Categoria</th>
+              <th className="pb-3 w-[18%]">Conta</th>
+              <th className="pb-3 text-right w-[17%]">Valor</th>
+              <th className="pb-3 text-center print:hidden w-[10%]">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y text-sm text-gray-600">
             {transacoesFiltradas.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50">
-                <td className="py-3">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                <td className="py-3 font-medium text-gray-800">{t.descricao}</td>
-                <td className="py-3">{t.categorias?.nome || t.categories?.nome || 'Sem categoria'}</td>
-                <td className="py-3">{t.contas?.nome || 'Sem conta'}</td>
-                <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                <td className="py-3 font-medium whitespace-nowrap">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                <td className="py-3 pr-4 break-words font-medium text-gray-800">{t.descricao}</td>
+                <td className="py-3 truncate">{t.categorias?.nome || t.categories?.nome || 'Sem categoria'}</td>
+                <td className="py-3 truncate">{t.contas?.nome || 'Sem conta'}</td>
+                <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
-                <td className="py-3 text-center space-x-2 print:hidden">
-                  <button onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition">✏️ Alterar</button>
-                  <button onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition">🗑️ Excluir</button>
+                <td className="py-3 text-center print:hidden">
+                  <div className="flex items-center justify-center gap-2">
+                    <button type="button" onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition">✏️</button>
+                    <button type="button" onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition">🗑️</button>
+                  </div>
                 </td>
               </tr>
             ))}
