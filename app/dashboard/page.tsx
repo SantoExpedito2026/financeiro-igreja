@@ -163,10 +163,10 @@ export default function Dashboard() {
           onError={(e) => { e.currentTarget.style.display = 'none'; }} 
         />
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Paróquia Santo Expedito</h1>
-          <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa</p>
+          <h1 className="text-3xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
+          <p className="text-gray-500 text-sm">Painel de Gestão, Lançamentos e Fluxo de Caixa da Comunidade</p>
         </div>
-      </div>
+
 
       <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
         <div>
@@ -333,7 +333,8 @@ export default function Dashboard() {
           />
         </div>
 
-        <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Paróquia Santo Expedito</h2>
+       <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
+
 
         <table className="w-full text-left border-collapse">
           <thead>
