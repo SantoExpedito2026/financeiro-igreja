@@ -147,6 +147,15 @@ export default function Dashboard() {
   const saldoFinalTotal = saldoInicialTotal + totalGeralEntradas - totalGeralSaidas;
   // Lógica para calcular a porcentagem de gastos em relação às receitas do mês
   const porcentagemDespesas = totalGeralEntradas > 0 ? Math.min((totalGeralSaidas / totalGeralEntradas) * 100, 100) : 0;
+  // Lógica para somar totais agrupados por categoria para o mês atual
+  const totaisCategorias: { [key: string]: { total: number; tipo: string } } = {};
+  transacoesFiltradas.forEach(t => {
+    const nomeCat = t.categorias?.nome || 'Sem categoria';
+    if (!totaisCategorias[nomeCat]) {
+      totaisCategorias[nomeCat] = { total: 0, tipo: t.tipo };
+    }
+    totaisCategorias[nomeCat].total += Number(t.valor);
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
@@ -211,6 +220,40 @@ export default function Dashboard() {
           <p className={totalGeralSaidas > totalGeralEntradas ? "text-rose-500 font-bold" : ""}>
             {totalGeralSaidas > totalGeralEntradas ? "⚠️ Atenção: Deficit no mês!" : "✅ Caixa em equilíbrio"}
           </p>
+        </div>
+      </div>
+      {/* RESUMO POR CATEGORIAS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Coluna de Entradas por Categoria */}
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
+          <div className="space-y-2 text-sm">
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').map(([nome, c]) => (
+              <div key={nome} className="flex justify-between border-b pb-1">
+                <span className="text-gray-600 font-medium">{nome}</span>
+                <span className="text-emerald-600 font-bold">R$ {c.total.toFixed(2)}</span>
+              </div>
+            ))}
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').length === 0 && (
+              <p className="text-gray-400 text-xs italic">Nenhuma receita registrada neste mês.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Coluna de Saídas por Categoria */}
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <h3 className="text-sm font-bold text-rose-700 uppercase mb-3">💸 Saídas por Categoria</h3>
+          <div className="space-y-2 text-sm">
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([nome, c]) => (
+              <div key={nome} className="flex justify-between border-b pb-1">
+                <span className="text-gray-600 font-medium">{nome}</span>
+                <span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span>
+              </div>
+            ))}
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').length === 0 && (
+              <p className="text-gray-400 text-xs italic">Nenhuma despesa registrada neste mês.</p>
+            )}
+          </div>
         </div>
       </div>
 
