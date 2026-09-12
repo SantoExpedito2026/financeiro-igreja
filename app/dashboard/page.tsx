@@ -17,9 +17,7 @@ export default function Dashboard() {
   const [dataTransacao, setDataTransacao] = useState(new Date().toISOString().substring(0, 10));
   const [salvando, setSalvando] = useState(false);
   const [mesFiltro, setMesFiltro] = useState(new Date().toISOString().substring(0, 7));
-  // Estados para controlar o modo de edição
   const [editandoId, setEditandoId] = useState<number | null>(null);
-  // Estado para armazenar o termo digitado na busca por texto
   const [buscaTexto, setBuscaTexto] = useState('');
 
   async function carregarDados() {
@@ -61,13 +59,10 @@ export default function Dashboard() {
     };
 
     let error = null;
-
     if (editandoId) {
-      // Se tiver um ID em edição, atualiza o lançamento existente
       const { error: err } = await supabase.from('transacoes').update([dadosTransacao]).eq('id', editandoId);
       error = err;
     } else {
-      // Se não tiver ID em edição, insere um novo lançamento
       const { error: err } = await supabase.from('transacoes').insert([dadosTransacao]);
       error = err;
     }
@@ -77,7 +72,6 @@ export default function Dashboard() {
       alert('Erro ao salvar/atualizar: ' + error.message);
     } else {
       alert(editandoId ? 'Lançamento atualizado com sucesso!' : 'Lançamento registrado com sucesso!');
-      // Limpa o formulário e sai do modo de edição
       setDescricao('');
       setValor('');
       setCategoriaId('');
@@ -85,8 +79,6 @@ export default function Dashboard() {
       carregarDados();
     }
   }
-
-  // Nova função para puxar os dados da tabela para o formulário no topo
   function iniciarEdicao(t: any) {
     setEditandoId(t.id);
     setDescricao(t.descricao);
@@ -96,8 +88,6 @@ export default function Dashboard() {
     setContaId(t.conta_id.toString());
     setFormaPagamento(t.forma_pagamento);
     setDataTransacao(t.data_transacao);
-    
-    // Rola a página suavemente para o formulário no topo
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -126,7 +116,6 @@ export default function Dashboard() {
   const saldoInicialBanco = 97743.09;
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
 
-    // Filtra as transações primeiro pelo mês e depois pelo texto digitado na busca
   const transacoesFiltradas = transacoes.filter(t => {
     const correspondeAoMes = t.data_transacao.startsWith(mesFiltro);
     const correspondeAoTexto = t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase());
@@ -152,9 +141,8 @@ export default function Dashboard() {
   const saldoAtualCaixa = saldoInicialCaixa + totalEntradasCaixa - totalSaidasCaixa;
   const saldoAtualBanco = saldoInicialBanco + totalEntradasBanco - totalSaidasBanco;
   const saldoFinalTotal = saldoInicialTotal + totalGeralEntradas - totalGeralSaidas;
-  // Lógica para calcular a porcentagem de gastos em relação às receitas do mês
   const porcentagemDespesas = totalGeralEntradas > 0 ? Math.min((totalGeralSaidas / totalGeralEntradas) * 100, 100) : 0;
-  // Lógica para somar totais agrupados por categoria para o mês atual
+
   const totaisCategorias: { [key: string]: { total: number; tipo: string } } = {};
   transacoesFiltradas.forEach(t => {
     const nomeCat = t.categorias?.nome || 'Sem categoria';
@@ -178,6 +166,7 @@ export default function Dashboard() {
         </div>
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg bg-gray-50 text-gray-700 font-bold" />
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
@@ -195,7 +184,6 @@ export default function Dashboard() {
           <p className="text-2xl text-gray-800 mt-1">R$ {saldoFinalTotal.toFixed(2)}</p>
         </div>
       </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center font-bold">
         <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
           <p className="text-xs text-emerald-700 uppercase">Total de Entradas no Período</p>
@@ -206,32 +194,27 @@ export default function Dashboard() {
           <p className="text-2xl text-rose-600">- R$ {totalGeralSaidas.toFixed(2)}</p>
         </div>
       </div>
-      {/* PAINEL GRÁFICO VISUAL */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-4 print:hidden">
+
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento Mensal</h3>
           <span className="text-xs font-bold text-gray-400">Uso das Receitas: {porcentagemDespesas.toFixed(0)}%</span>
         </div>
-        
-        {/* Barra de Progresso Fundo */}
-        <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
-          {/* Barra Dinâmica de Gasto */}
+        <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
           <div 
             className={`h-full rounded-full transition-all duration-500 ${porcentagemDespesas > 80 ? 'bg-rose-500' : porcentagemDespesas > 50 ? 'bg-amber-500' : 'bg-emerald-500'}`}
             style={{ width: `${porcentagemDespesas}%` }}
           ></div>
         </div>
-        
-        <div className="flex justify-between text-xs text-gray-400 font-medium">
+        <div className="flex justify-between text-xs text-gray-400 font-medium mt-2">
           <p>🟢 Ideal: Despesas abaixo de 70%</p>
           <p className={totalGeralSaidas > totalGeralEntradas ? "text-rose-500 font-bold" : ""}>
             {totalGeralSaidas > totalGeralEntradas ? "⚠️ Atenção: Deficit no mês!" : "✅ Caixa em equilíbrio"}
           </p>
         </div>
       </div>
-      {/* RESUMO POR CATEGORIAS */}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Coluna de Entradas por Categoria */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
           <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
           <div className="space-y-2 text-sm">
@@ -247,7 +230,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Coluna de Saídas por Categoria */}
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
           <h3 className="text-sm font-bold text-rose-700 uppercase mb-3">💸 Saídas por Categoria</h3>
           <div className="space-y-2 text-sm">
@@ -315,14 +297,14 @@ export default function Dashboard() {
           </div>
           <div className="md:col-span-3 lg:col-span-4 flex justify-end pt-2">
             <button type="submit" disabled={salvando} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg disabled:bg-gray-400 transition">
-           {salvando ? 'Salvando...' : editandoId ? '✨ Atualizar Lançamento' : '✨ Registrar no Fluxo'}
+              {salvando ? 'Salvando...' : editandoId ? '✨ Atualizar Lançamento' : '✨ Registrar no Fluxo'}
             </button>
           </div>
         </form>
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-                <div className="flex items-center justify-between mb-4 print:hidden">
+        <div className="flex items-center justify-between mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
           <button 
             onClick={() => window.print()} 
@@ -331,16 +313,17 @@ export default function Dashboard() {
             🖨️ Imprimir Relatório Mensal
           </button>
         </div>
-      {/* BARRA DE PESQUISA POR TEXTO */}
-      <div className="mb-4 print:hidden">
-        <input 
-          type="text"
-          value={buscaTexto}
-          onChange={(e) => setBuscaTexto(e.target.value)}
-          placeholder="🔍 Procurar por nome de fiel, fornecedor ou descrição..."
-          className="w-full border p-2 rounded-lg bg-white text-sm shadow-sm"
-        />
-      </div>
+
+        <div className="mb-4 print:hidden">
+          <input 
+            type="text"
+            value={buscaTexto}
+            onChange={(e) => setBuscaTexto(e.target.value)}
+            placeholder="🔍 Procurar por nome de fiel, fornecedor ou descrição..."
+            className="w-full border p-2 rounded-lg bg-gray-50 text-sm shadow-sm"
+          />
+        </div>
+
         <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Paróquia Santo Expedito</h2>
 
         <table className="w-full text-left border-collapse">
@@ -372,22 +355,3 @@ export default function Dashboard() {
                     ✏️ Alterar
                   </button>
                   <button 
-                    onClick={() => handleDeletar(t.id)} 
-                    className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition"
-                  >
-                    🗑️ Excluir
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {transacoesFiltradas.length === 0 && (
-              <tr>
-                <td colSpan={6} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
