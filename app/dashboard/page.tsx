@@ -323,7 +323,7 @@ export default function Dashboard() {
               ></div>
             </div>
 
-            <div className="flex justify-between text-xs text-gray-400 font-medium mt-2">
+            <div className="flex justify-between items-center text-xs text-gray-400 font-medium mt-2">
               <p>🟢 Ideal: Despesas abaixo de 70%</p>
               <p className={isDeficit ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>
                 {isDeficit ? "⚠️ Atenção: Deficit no mês!" : "✅ Caixa em equilíbrio"}
