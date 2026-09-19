@@ -199,7 +199,7 @@ export default function Dashboard() {
   }
 
   // CÁLCULOS LÓGICOS DO PAINEL FINANCEIRO (PROTEGIDO)
-  const saldoInicialCaixa = 3146.95;
+const saldoInicialCaixa = 4635.45;
   const saldoInicialBanco = 97743.09;
   const saldoInicialTotal = saldoInicialCaixa + saldoInicialBanco;
 
