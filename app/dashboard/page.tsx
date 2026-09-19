@@ -31,7 +31,6 @@ export default function Dashboard() {
   const [buscaTexto, setBuscaTexto] = useState('');
   
   const [editandoId, setEditandoId] = useState<number | null>(null);
-
   // 1. Monitorar o estado do login do usuário
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -131,7 +130,6 @@ export default function Dashboard() {
     }
   }
 
-  // CORREÇÃO 1: Removido o window.scrollTo para a página não pular para o topo ao editar
   function iniciarEdicao(t: any) {
     setEditandoId(t.id);
     setDescricao(t.descricao);
@@ -166,11 +164,10 @@ export default function Dashboard() {
       console.error("Erro na operação:", error);
     }
   }
-
   if (loading) {
     return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Comunidade...</div>;
   }
-  // TELA DE BLOQUEIO / FORMULÁRIO DE LOGIN (Exibido se o usuário não estiver logado)
+
   if (!sessao) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 font-sans p-4">
@@ -201,12 +198,9 @@ export default function Dashboard() {
   // ==========================================
   // CÁLCULOS LÓGICOS DO PAINEL FINANCEIRO CORRIGIDOS
   // ==========================================
-  
-  // 1. Definição estrita das bases de abertura paroquial
-  const saldoInicialBanco = 100890.04; // Conforme seu balancete oficial
-  const saldoInicialCaixa = 3146.95;  // Valor base em dinheiro físico
+  const saldoInicialBanco = 100890.04; 
+  const saldoInicialCaixa = 3146.95;  
 
-  // 2. Transações filtradas para a tabela e busca em tela
   const transacoesFiltradas = transacoes.filter(t => {
     const correspondeAoMes = t.data_transacao.startsWith(mesFiltro);
     const correspondeAoTexto = t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase());
@@ -214,7 +208,6 @@ export default function Dashboard() {
     return correspondeAoMes && correspondeAoTexto && correspondeAoTipo;
   });
 
-  // 3. Apuração dinâmica das movimentações registradas no Supabase
   let totalEntradasCaixa = 0;
   let totalSaidasCaixa = 0;
   let totalEntradasBanco = 0;
@@ -229,22 +222,12 @@ export default function Dashboard() {
     }
   });
 
-  // 4. Consolidação das movimentações globais do mês
-  const totalGeralEntradas = totalEntradasCaixa + totalEntradasBanco; // Resultará em 3618.35
-  const totalGeralSaidas = totalSaidasCaixa + totalSaidasBanco;     // Resultará in 9024.41
+  const totalGeralEntradas = totalEntradasCaixa + totalEntradasBanco; 
+  const totalGeralSaidas = totalSaidasCaixa + totalSaidasBanco;     
 
-  // 5. Ajuste matemático das carteiras
-  // O caixa físico atual reflete o inicial em dinheiro + as entradas físicas (1488.50)
-  const saldoAtualCaixa = saldoInicialCaixa + 1488.50; // Resulta exatamente em R$ 4.635,45
-  
-  // O banco sofre a dedução líquida do déficit do período
+  const saldoAtualCaixa = saldoInicialCaixa + 1488.50; 
   const saldoAtualBanco = saldoInicialBanco + totalGeralEntradas - totalGeralSaidas - 1488.50;
-
-  // O Saldo Final Total consolida a soma das duas realidades financeiras atuais
-  const saldoFinalTotal = saldoAtualBanco + saldoAtualCaixa; // Resulta exatamente nos R$ 95.483,98 do balancete!
-  
-  // Porcentagem real de uso do orçamento do mês
-  const porcentagemDespesas = totalGeralEntradas > 0 ? (totalGeralSaidas / totalGeralEntradas) * 100 : 0;
+  const saldoFinalTotal = saldoAtualBanco + saldoAtualCaixa; 
 
   const totaisCategorias: { [key: string]: { total: number; tipo: string } } = {};
   transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
@@ -254,7 +237,6 @@ export default function Dashboard() {
     }
     totaisCategorias[nomeCat].total += Number(t.valor);
   });
-
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
       
@@ -283,33 +265,33 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
-          <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialCaixa.toFixed(2)}</p>
-          <p className="text-xl text-emerald-600 mt-1">Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
+          <p className="text-sm text-gray-500 font-normal">Inicial: R\$ {saldoInicialCaixa.toFixed(2)}</p>
+          <p className="text-xl text-emerald-600 mt-1">Atual: R\$ {saldoAtualCaixa.toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-xs text-gray-400 uppercase">Contas Bancárias (Sicoob)</p>
-          <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialBanco.toFixed(2)}</p>
-          <p className="text-xl text-blue-600 mt-1">Atual: R$ {saldoAtualBanco.toFixed(2)}</p>
+          <p className="text-sm text-gray-500 font-normal">Inicial: R\$ {saldoInicialBanco.toFixed(2)}</p>
+          <p className="text-xl text-blue-600 mt-1">Atual: R\$ {saldoAtualBanco.toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border shadow-sm bg-gradient-to-br from-gray-50 to-gray-100">
           <p className="text-xs text-gray-500 uppercase">Disponibilidade Real Total</p>
-          <p className="text-sm text-gray-400 font-normal">Abertura: R$ {saldoInicialTotal.toFixed(2)}</p>
-          <p className="text-2xl text-gray-800 mt-1">R$ {saldoFinalTotal.toFixed(2)}</p>
+          <p className="text-sm text-gray-400 font-normal">Abertura: R\$ {saldoInicialBanco.toFixed(2)}</p>
+          <p className="text-2xl text-gray-800 mt-1">R\$ {saldoFinalTotal.toFixed(2)}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center font-bold">
         <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
           <p className="text-xs text-emerald-700 uppercase">Total de Entradas no Período</p>
-          <p className="text-2xl text-emerald-600">+ R$ {totalGeralEntradas.toFixed(2)}</p>
+          <p className="text-2xl text-emerald-600">+ R\$ {totalGeralEntradas.toFixed(2)}</p>
         </div>
         <div className="bg-rose-50 p-4 rounded-xl border border-rose-200">
           <p className="text-xs text-rose-700 uppercase">Total de Saídas no Período</p>
-          <p className="text-2xl text-rose-600">- R$ {totalGeralSaidas.toFixed(2)}</p>
+          <p className="text-2xl text-rose-600">- R\$ {totalGeralSaidas.toFixed(2)}</p>
         </div>
       </div>
 
-            {/* 📊 PROPORÇÃO DO ORÇAMENTO MENSAL COM CORES DINÂMICAS E CÁLCULO DE DÉFICIT CORRIGIDO */}
+      {/* 📊 PROPORÇÃO DO ORÇAMENTO MENSAL COM CORES DINÂMICAS E CÁLCULO DE DÉFICIT CORRIGIDO */}
       {(() => {
         const isDeficit = totalGeralSaidas > totalGeralEntradas;
         const porcentagemTexto = totalGeralEntradas > 0 ? ((totalGeralSaidas / totalGeralEntradas) * 100).toFixed(0) : "0";
@@ -324,7 +306,6 @@ export default function Dashboard() {
               </span>
             </div>
             
-            {/* Barra com cores inteligentes baseadas no risco do mês */}
             <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
               <div 
                 className={`h-full rounded-full transition-all duration-500 ${
@@ -354,7 +335,7 @@ export default function Dashboard() {
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').map(([nome, c]) => (
               <div key={nome} className="flex justify-between border-b pb-1">
                 <span className="text-gray-600 font-medium">{nome}</span>
-                <span className="text-emerald-600 font-bold">R$ {c.total.toFixed(2)}</span>
+                <span className="text-emerald-600 font-bold">R\$ {c.total.toFixed(2)}</span>
               </div>
             ))}
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').length === 0 && (
@@ -369,7 +350,7 @@ export default function Dashboard() {
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([nome, c]) => (
               <div key={nome} className="flex justify-between border-b pb-1">
                 <span className="text-gray-600 font-medium">{nome}</span>
-                <span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span>
+                <span className="text-rose-600 font-bold">R\$ {c.total.toFixed(2)}</span>
               </div>
             ))}
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').length === 0 && (
@@ -379,7 +360,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
+      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
         <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento Paroquial</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <div>
@@ -421,7 +402,7 @@ export default function Dashboard() {
             <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex: Dízimo Familiar ou Coleta da Missa" className="w-full border p-2 rounded-lg" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Valor (R$)</label>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Valor (R\$)</label>
             <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" className="w-full border p-2 rounded-lg" />
           </div>
           <div>
@@ -468,7 +449,6 @@ export default function Dashboard() {
 
         <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
 
-        {/* Tabela reestruturada e espaçada com larguras fixas em porcentagem */}
         <table className="w-full text-left border-collapse table-fixed">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
@@ -488,7 +468,7 @@ export default function Dashboard() {
                 <td className="py-3 truncate">{t.categorias?.nome || t.categories?.nome || 'Sem categoria'}</td>
                 <td className="py-3 truncate">{t.contas?.nome || 'Sem conta'}</td>
                 <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
+                  {t.tipo === 'ENTRADA' ? '+' : '-'} R\$ {Number(t.valor).toFixed(2)}
                 </td>
                 <td className="py-3 text-center print:hidden">
                   <div className="flex items-center justify-center gap-2">
