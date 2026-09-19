@@ -386,7 +386,7 @@ export default function Dashboard() {
           📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito
         </h2>
         
-        <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
               <th className="pb-3 w-[15%]">Data</th>
@@ -405,7 +405,15 @@ export default function Dashboard() {
                 <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
                 <td className="py-3 text-center">
                   {t.url_comprovante ? (
-                    <a href={t.url_comprovante} target="_blank" rel="noopener noreferrer" className="inline-block bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-1 px-2 rounded-md text-xs transition">📄 Ver</a>
+                    <a 
+                      href={t.url_comprovante} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="inline-block bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-1 px-2.5 rounded-md text-xs transition"
+                      title="Visualizar Comprovante Paroquial"
+                    >
+                      📄 Ver
+                    </a>
                   ) : (
                     <span className="text-gray-300 text-xs italic">-</span>
                   )}
@@ -415,8 +423,22 @@ export default function Dashboard() {
                 </td>
                 <td className="py-3 text-center print:hidden">
                   <div className="flex items-center justify-center gap-1.5">
-                    <button type="button" onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition" title="Editar">✏️</button>
-                    <button type="button" onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition" title="Excluir">🗑️</button>
+                    <button 
+                      type="button" 
+                      onClick={() => iniciarEdicao(t)} 
+                      className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition"
+                      title="Editar"
+                    >
+                      ✏️
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => handleDeletar(t.id)} 
+                      className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition"
+                      title="Excluir"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </td>
               </tr>
