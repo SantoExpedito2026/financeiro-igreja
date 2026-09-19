@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [formaPagamento, setFormaPagamento] = useState('Dinheiro');
   const [dataTransacao, setDataTransacao] = useState(new Date().toISOString().substring(0, 10));
   const [salvando, setSalvando] = useState(false);
+  const [arquivo, setArquivo] = useState<File | null>(null);
   
   const [mesFiltro, setMesFiltro] = useState(new Date().toISOString().substring(0, 7));
   const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'ENTRADA' | 'SAIDA'>('TODOS');
@@ -69,17 +70,63 @@ export default function Dashboard() {
     } catch (error) { console.error(error); } finally { setLoading(false); }
   }
 
-  async function handleSalvar(e: React.FormEvent) {
+    async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
     setSalvando(true);
-    const dados = { descricao, valor: parseFloat(valor), tipo, categoria_id: parseInt(categoriaId), conta_id: parseInt(contaId), forma_pagamento: formaPagamento, data_transacao: dataTransacao, status: 'CONCRETIZADO' };
+
+    let urlComprovante = null;
+
+    // Se houver um arquivo selecionado, faz o upload para o Supabase Storage
+    if (arquivo && tipo === 'SAIDA') {
+      const nomeArquivo = `${Date.now()}_${arquivo.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('comprovantes')
+        .upload(nomeArquivo, arquivo);
+
+      if (uploadError) {
+        setSalvando(false);
+        return alert('Erro ao fazer upload do comprovante: ' + uploadError.message);
+      }
+
+      // Pega a URL pública do arquivo enviado
+      const { data: urlData } = supabase.storage.from('comprovantes').getPublicUrl(nomeArquivo);
+      urlComprovante = urlData.publicUrl;
+    }
+
+    const dados = { 
+      descricao, 
+      valor: parseFloat(valor), 
+      tipo, 
+      categoria_id: parseInt(categoriaId), 
+      conta_id: parseInt(contaId), 
+      forma_pagamento: formaPagamento, 
+      data_transacao: dataTransacao, 
+      status: 'CONCRETIZADO',
+      url_comprovante: urlComprovante // Salva o link do documento na tabela
+    };
+
     let error = null;
-    if (editandoId) { const { error: err } = await supabase.from('transacoes').update([dados]).eq('id', editandoId); error = err; }
-    else { const { error: err } = await supabase.from('transacoes').insert([dados]); error = err; }
+    if (editandoId) { 
+      const { error: err } = await supabase.from('transacoes').update([dados]).eq('id', editandoId); 
+      error = err; 
+    } else { 
+      const { error: err } = await supabase.from('transacoes').insert([dados]); 
+      error = err; 
+    }
+
     setSalvando(false);
-    if (error) alert('Erro ao salvar: ' + error.message);
-    else { setDescricao(''); setValor(''); setCategoriaId(''); setEditandoId(null); carregarDados(); }
+    if (error) { 
+      alert('Erro ao salvar: ' + error.message); 
+    } else { 
+      alert(editandoId ? 'Lançamento atualizado com sucesso!' : 'Lançamento registrado com sucesso!');
+      setDescricao(''); 
+      setValor(''); 
+      setCategoriaId(''); 
+      setArquivo(null); // Limpa o arquivo selecionado
+      setEditandoId(null); 
+      carregarDados(); 
+    }
   }
 
   function iniciarEdicao(t: any) {
@@ -267,6 +314,17 @@ export default function Dashboard() {
           <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição" className="border p-2 rounded-lg" />
           <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" className="border p-2 rounded-lg" />
           <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="border p-2 rounded-lg" />
+          {tipo === 'SAIDA' && (
+            <div className="flex flex-col">
+              <label className="text-xs text-gray-400 font-medium mb-1">📎 Anexar Comprovante (Nota/Boleto)</label>
+              <input 
+                type="file" 
+                accept="image/*,application/pdf"
+                onChange={(e) => setArquivo(e.target.files?.[0] || null)}
+                className="w-full border p-1.5 rounded-lg text-xs bg-gray-50 cursor-pointer file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-white hover:file:bg-zinc-700"
+              />
+            </div>
+          )}
           <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg">{salvando ? 'Salvando...' : 'Registrar'}</button>
         </form>
       </div>
@@ -277,17 +335,38 @@ export default function Dashboard() {
           <button onClick={() => window.print()} className="bg-gray-800 text-white font-bold py-1.5 px-4 rounded-lg text-sm">🖨️ Imprimir</button>
         </div>
         <table className="w-full text-left border-collapse">
-          <thead>
+         <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
-              <th className="pb-3">Data</th><th>Descrição</th><th>Categoria</th><th className="text-right">Valor</th>
+              <th className="pb-3">Data</th>
+              <th className="pb-3">Descrição</th>
+              <th className="pb-3">Categoria</th>
+              <th className="pb-3 text-center">Doc</th> {/* 👈 ADICIONE ESTA LINHA */}
+              <th className="pb-3 text-right">Valor</th>
             </tr>
           </thead>
+
           <tbody className="divide-y text-sm text-gray-600">
             {transacoesFiltradas.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50">
                 <td className="py-3">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
                 <td className="py-3 font-bold text-gray-800">{t.descricao}</td>
                 <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
+                <td className="py-3 text-center">
+                  {t.url_comprovante ? (
+                    <a 
+                      href={t.url_comprovante} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="inline-block bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-1 px-2.5 rounded-md text-xs transition"
+                      title="Visualizar Comprovante Paroquial"
+                    >
+                      📄 Ver
+                    </a>
+                  ) : (
+                    <span className="text-gray-300 text-xs italic">-</span>
+                  )}
+                </td>
+
                 <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>R$ {Number(t.valor).toFixed(2)}</td>
               </tr>
             ))}
