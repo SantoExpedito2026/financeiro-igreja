@@ -419,7 +419,7 @@ export default function Dashboard() {
                   )}
                 </td>
                 <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {t.tipo === 'ENTRADA' ? '+' : '-'} R\$ {Number(t.valor).toFixed(2)}
+                  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
                 <td className="py-3 text-center print:hidden">
                   <div className="flex items-center justify-center gap-1.5">
