@@ -265,29 +265,29 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
-          <p className="text-sm text-gray-500 font-normal">Inicial: R\$ {saldoInicialCaixa.toFixed(2)}</p>
-          <p className="text-xl text-emerald-600 mt-1">Atual: R\$ {saldoAtualCaixa.toFixed(2)}</p>
+          <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialCaixa.toFixed(2)}</p>
+          <p className="text-xl text-emerald-600 mt-1">Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border shadow-sm">
           <p className="text-xs text-gray-400 uppercase">Contas Bancárias (Sicoob)</p>
-          <p className="text-sm text-gray-500 font-normal">Inicial: R\$ {saldoInicialBanco.toFixed(2)}</p>
-          <p className="text-xl text-blue-600 mt-1">Atual: R\$ {saldoAtualBanco.toFixed(2)}</p>
+          <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialBanco.toFixed(2)}</p>
+          <p className="text-xl text-blue-600 mt-1">Atual: R$ {saldoAtualBanco.toFixed(2)}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border shadow-sm bg-gradient-to-br from-gray-50 to-gray-100">
           <p className="text-xs text-gray-500 uppercase">Disponibilidade Real Total</p>
-          <p className="text-sm text-gray-400 font-normal">Abertura: R\$ {saldoInicialBanco.toFixed(2)}</p>
-          <p className="text-2xl text-gray-800 mt-1">R\$ {saldoFinalTotal.toFixed(2)}</p>
+          <p className="text-sm text-gray-400 font-normal">Abertura: R$ {saldoInicialBanco.toFixed(2)}</p>
+          <p className="text-2xl text-gray-800 mt-1">R$ {saldoFinalTotal.toFixed(2)}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center font-bold">
         <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
           <p className="text-xs text-emerald-700 uppercase">Total de Entradas no Período</p>
-          <p className="text-2xl text-emerald-600">+ R\$ {totalGeralEntradas.toFixed(2)}</p>
+          <p className="text-2xl text-emerald-600">+ R$ {totalGeralEntradas.toFixed(2)}</p>
         </div>
         <div className="bg-rose-50 p-4 rounded-xl border border-rose-200">
           <p className="text-xs text-rose-700 uppercase">Total de Saídas no Período</p>
-          <p className="text-2xl text-rose-600">- R\$ {totalGeralSaidas.toFixed(2)}</p>
+          <p className="text-2xl text-rose-600">- R$ {totalGeralSaidas.toFixed(2)}</p>
         </div>
       </div>
 
@@ -335,7 +335,7 @@ export default function Dashboard() {
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').map(([nome, c]) => (
               <div key={nome} className="flex justify-between border-b pb-1">
                 <span className="text-gray-600 font-medium">{nome}</span>
-                <span className="text-emerald-600 font-bold">R\$ {c.total.toFixed(2)}</span>
+                <span className="text-emerald-600 font-bold">R$ {c.total.toFixed(2)}</span>
               </div>
             ))}
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').length === 0 && (
@@ -350,7 +350,7 @@ export default function Dashboard() {
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([nome, c]) => (
               <div key={nome} className="flex justify-between border-b pb-1">
                 <span className="text-gray-600 font-medium">{nome}</span>
-                <span className="text-rose-600 font-bold">R\$ {c.total.toFixed(2)}</span>
+                <span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span>
               </div>
             ))}
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').length === 0 && (
@@ -402,7 +402,7 @@ export default function Dashboard() {
             <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex: Dízimo Familiar ou Coleta da Missa" className="w-full border p-2 rounded-lg" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Valor (R\$)</label>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Valor (R$)</label>
             <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" className="w-full border p-2 rounded-lg" />
           </div>
           <div>
@@ -468,7 +468,7 @@ export default function Dashboard() {
                 <td className="py-3 truncate">{t.categorias?.nome || t.categories?.nome || 'Sem categoria'}</td>
                 <td className="py-3 truncate">{t.contas?.nome || 'Sem conta'}</td>
                 <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {t.tipo === 'ENTRADA' ? '+' : '-'} R\$ {Number(t.valor).toFixed(2)}
+                  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
                 <td className="py-3 text-center print:hidden">
                   <div className="flex items-center justify-center gap-2">
