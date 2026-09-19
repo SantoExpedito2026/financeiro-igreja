@@ -153,15 +153,15 @@ export default function Dashboard() {
             {tooltipAtivo === 'caixa' && (
               <div className="absolute right-0 top-6 bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
                 <p className="font-bold text-emerald-400">📋 Resumo do Cálculo:</p>
-                <p>Saldo Inicial: R\$ 3.146,95</p>
-                <p>(+) Entradas Mês: R\$ 1.488,50</p>
-                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R\$ 4.635,45</p>
+                <p>Saldo Inicial: R$ 3.146,95</p>
+                <p>(+) Entradas Mês: R$ 1.488,50</p>
+                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R$ 4.635,45</p>
               </div>
             )}
           </div>
           <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
-          <p className="text-sm text-gray-500 font-normal">Inicial: R\$ {saldoInicialCaixa.toFixed(2)}</p>
-          <p className="text-xl text-emerald-600 mt-1">Atual: R\$ {saldoAtualCaixa.toFixed(2)}</p>
+          <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialCaixa.toFixed(2)}</p>
+          <p className="text-xl text-emerald-600 mt-1">Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border relative">
@@ -170,15 +170,15 @@ export default function Dashboard() {
             {tooltipAtivo === 'sicoob' && (
               <div className="absolute right-0 top-6 bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
                 <p className="font-bold text-blue-400">📋 Resumo do Cálculo:</p>
-                <p>Saldo Inicial: R\$ 100.890,04</p>
-                <p>(-) Dedução Caixa: R\$ 6.894,56</p>
-                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R\$ 93.995,48</p>
+                <p>Saldo Inicial: R$ 100.890,04</p>
+                <p>(-) Dedução Caixa: R$ 6.894,56</p>
+                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R$ 93.995,48</p>
               </div>
             )}
           </div>
           <p className="text-xs text-gray-400 uppercase">Contas Bancárias (Sicoob)</p>
-          <p className="text-sm text-gray-500 font-normal">Inicial: R\$ {saldoInicialBanco.toFixed(2)}</p>
-          <p className="text-xl text-blue-600 mt-1">Atual: R\$ {saldoAtualBanco.toFixed(2)}</p>
+          <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialBanco.toFixed(2)}</p>
+          <p className="text-xl text-blue-600 mt-1">Atual: R$ {saldoAtualBanco.toFixed(2)}</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border bg-gradient-to-br from-gray-50 to-gray-100 relative">
@@ -187,26 +187,26 @@ export default function Dashboard() {
             {tooltipAtivo === 'total' && (
               <div className="absolute right-0 top-6 bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
                 <p className="font-bold text-amber-400">📋 Resumo do Cálculo:</p>
-                <p>(+) Caixa Físico: R\$ 4.635,45</p>
-                <p>(+) Sicoob: R\$ 93.995,48</p>
-                <p className="font-bold border-t border-gray-700 mt-1">(=) Total: R\$ 98.630,93</p>
+                <p>(+) Caixa Físico: R$ 4.635,45</p>
+                <p>(+) Sicoob: R$ 93.995,48</p>
+                <p className="font-bold border-t border-gray-700 mt-1">(=) Total: R$ 98.630,93</p>
               </div>
             )}
           </div>
           <p className="text-xs text-gray-500 uppercase">Disponibilidade Real Total</p>
-          <p className="text-sm text-gray-400 font-normal">Abertura: R\$ {saldoInicialBanco.toFixed(2)}</p>
-          <p className="text-2xl text-gray-800 mt-1">R\$ {saldoFinalTotal.toFixed(2)}</p>
+          <p className="text-sm text-gray-400 font-normal">Abertura: R$ {saldoInicialBanco.toFixed(2)}</p>
+          <p className="text-2xl text-gray-800 mt-1">R$ {saldoFinalTotal.toFixed(2)}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center font-bold">
         <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
           <p className="text-xs text-emerald-700 uppercase">Total de Entradas</p>
-          <p className="text-2xl text-emerald-600">+ R\$ {totalGeralEntradas.toFixed(2)}</p>
+          <p className="text-2xl text-emerald-600">+ R$ {totalGeralEntradas.toFixed(2)}</p>
         </div>
         <div className="bg-rose-50 p-4 rounded-xl border border-rose-200">
           <p className="text-xs text-rose-700 uppercase">Total de Saídas</p>
-          <p className="text-2xl text-rose-600">- R\$ {totalGeralSaidas.toFixed(2)}</p>
+          <p className="text-2xl text-rose-600">- R$ {totalGeralSaidas.toFixed(2)}</p>
         </div>
       </div>
 
@@ -232,7 +232,7 @@ export default function Dashboard() {
           <div className="space-y-2 text-sm">
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').map(([nome, c]) => (
               <div key={nome} className="flex justify-between border-b pb-1">
-                <span>{nome}</span><span className="text-emerald-600 font-bold">R\$ {c.total.toFixed(2)}</span>
+                <span>{nome}</span><span className="text-emerald-600 font-bold">R$ {c.total.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -242,7 +242,7 @@ export default function Dashboard() {
           <div className="space-y-2 text-sm">
             {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([nome, c]) => (
               <div key={nome} className="flex justify-between border-b pb-1">
-                <span>{nome}</span><span className="text-rose-600 font-bold">R\$ {c.total.toFixed(2)}</span>
+                <span>{nome}</span><span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -288,7 +288,7 @@ export default function Dashboard() {
                 <td className="py-3">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
                 <td className="py-3 font-bold text-gray-800">{t.descricao}</td>
                 <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
-                <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>R\$ {Number(t.valor).toFixed(2)}</td>
+                <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>R$ {Number(t.valor).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
