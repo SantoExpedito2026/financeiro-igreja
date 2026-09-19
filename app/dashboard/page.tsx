@@ -345,7 +345,7 @@ export default function Dashboard() {
             </tr>
           </thead>
 
-          <tbody className="divide-y text-sm text-gray-600">
+                    <tbody className="divide-y text-sm text-gray-600">
             {transacoesFiltradas.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50">
                 <td className="py-3">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
@@ -366,10 +366,14 @@ export default function Dashboard() {
                     <span className="text-gray-300 text-xs italic">-</span>
                   )}
                 </td>
-
-                <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>R$ {Number(t.valor).toFixed(2)}</td>
+                <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>R\$ {Number(t.valor).toFixed(2)}</td>
               </tr>
             ))}
+            {transacoesFiltradas.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
