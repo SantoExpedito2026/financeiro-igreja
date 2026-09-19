@@ -329,27 +329,29 @@ export default function Dashboard() {
         </form>
       </div>
 
+      {/* 📋 SEÇÃO DE LANÇAMENTOS RECENTES REVISADA COM BOTÕES DE AÇÕES E AJUSTE DE MOEDA */}
       <div className="bg-white p-6 rounded-xl border overflow-x-auto">
         <div className="flex justify-between items-center mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
           <button onClick={() => window.print()} className="bg-gray-800 text-white font-bold py-1.5 px-4 rounded-lg text-sm">🖨️ Imprimir</button>
         </div>
+        
         <table className="w-full text-left border-collapse">
-         <thead>
+          <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
-              <th className="pb-3">Data</th>
-              <th className="pb-3">Descrição</th>
-              <th className="pb-3">Categoria</th>
-              <th className="pb-3 text-center">Doc</th> {/* 👈 ADICIONE ESTA LINHA */}
-              <th className="pb-3 text-right">Valor</th>
+              <th className="pb-3 w-[15%]">Data</th>
+              <th className="pb-3 w-[35%]">Descrição</th>
+              <th className="pb-3 w-[23%]">Categoria</th>
+              <th className="pb-3 text-center w-[10%]">Doc</th>
+              <th className="pb-3 text-right w-[17%]">Valor</th>
+              <th className="pb-3 text-center print:hidden w-[10%]">Ações</th>
             </tr>
           </thead>
-
-                    <tbody className="divide-y text-sm text-gray-600">
+          <tbody className="divide-y text-sm text-gray-600">
             {transacoesFiltradas.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50">
-                <td className="py-3">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                <td className="py-3 font-bold text-gray-800">{t.descricao}</td>
+                <td className="py-3 whitespace-nowrap">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                <td className="py-3 font-bold text-gray-800 pr-2">{t.descricao}</td>
                 <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
                 <td className="py-3 text-center">
                   {t.url_comprovante ? (
@@ -357,7 +359,7 @@ export default function Dashboard() {
                       href={t.url_comprovante} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="inline-block bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-1 px-2.5 rounded-md text-xs transition"
+                      className="inline-block bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-1 px-2 rounded-md text-xs transition"
                       title="Visualizar Comprovante Paroquial"
                     >
                       📄 Ver
@@ -366,18 +368,39 @@ export default function Dashboard() {
                     <span className="text-gray-300 text-xs italic">-</span>
                   )}
                 </td>
-                <td className={`py-3 text-right font-bold ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>R\$ {Number(t.valor).toFixed(2)}</td>
+                <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {t.tipo === 'ENTRADA' ? '+' : '-'} R\$ {Number(t.valor).toFixed(2)}
+                </td>
+                <td className="py-3 text-center print:hidden">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <button 
+                      type="button" 
+                      onClick={() => iniciarEdicao(t)} 
+                      className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition"
+                      title="Editar Lançamento"
+                    >
+                      ✏️
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => handleDeletar(t.id)} 
+                      className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition"
+                      title="Excluir Lançamento"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))}
             {transacoesFiltradas.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
+                <td colSpan={6} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-    </div>
   );
 }
 
