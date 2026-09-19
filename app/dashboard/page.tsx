@@ -262,18 +262,59 @@ export default function Dashboard() {
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg bg-gray-50 text-gray-700 font-bold" />
       </div>
 
+           {/* 💳 CARDS DE SALDO COM BALÕES INFORMATIVOS PAROQUIAIS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
-        <div className="bg-white p-4 rounded-xl border shadow-sm">
+        
+        {/* Caixa Físico Paroquial */}
+        <div className="bg-white p-4 rounded-xl border shadow-sm relative group">
+          <div className="absolute top-2 right-2 text-gray-300 hover:text-gray-500 cursor-help transition-all">
+            🛈
+            {/* Balão explicativo estilo Excel (Aparece ao passar o mouse) */}
+            <div className="absolute right-0 top-6 hidden group-hover:block bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 shadow-xl z-50 text-left leading-relaxed">
+              <p className="font-bold text-emerald-400 mb-1">📋 Resumo do Cálculo:</p>
+              <p>Saldo Inicial em Dinheiro: <span className="font-mono">R$ 3.146,95</span></p>
+              <p>(+) Entradas Físicas do Mês: <span className="font-mono">R$ 1.488,50</span></p>
+              <div className="border-t border-gray-700 my-1"></div>
+              <p className="font-bold">(=) Saldo Atual: <span className="font-mono text-emerald-400">R$ 4.635,45</span></p>
+            </div>
+          </div>
           <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
           <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialCaixa.toFixed(2)}</p>
           <p className="text-xl text-emerald-600 mt-1">Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border shadow-sm">
+
+        {/* Contas Bancárias (Sicoob) */}
+        <div className="bg-white p-4 rounded-xl border shadow-sm relative group">
+          <div className="absolute top-2 right-2 text-gray-300 hover:text-gray-500 cursor-help transition-all">
+            🛈
+            {/* Balão explicativo estilo Excel (Aparece ao passar o mouse) */}
+            <div className="absolute right-0 top-6 hidden group-hover:block bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 shadow-xl z-50 text-left leading-relaxed">
+              <p className="font-bold text-blue-400 mb-1">📋 Resumo do Cálculo:</p>
+              <p>Saldo Inicial em Conta: <span className="font-mono">R$ 100.890,04</span></p>
+              <p>(-) Dedução do Caixa Físico: <span className="font-mono">R$ 6.894,56</span></p>
+              <div className="border-t border-gray-700 my-1"></div>
+              <p className="font-bold">(=) Saldo Atual: <span className="font-mono text-blue-400">R$ 93.995,48</span></p>
+            </div>
+          </div>
           <p className="text-xs text-gray-400 uppercase">Contas Bancárias (Sicoob)</p>
           <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialBanco.toFixed(2)}</p>
           <p className="text-xl text-blue-600 mt-1">Atual: R$ {saldoAtualBanco.toFixed(2)}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border shadow-sm bg-gradient-to-br from-gray-50 to-gray-100">
+
+        {/* Disponibilidade Real Total */}
+        <div className="bg-white p-4 rounded-xl border shadow-sm bg-gradient-to-br from-gray-50 to-gray-100 relative group">
+          <div className="absolute top-2 right-2 text-gray-300 hover:text-gray-500 cursor-help transition-all">
+            🛈
+            {/* Balão explicativo estilo Excel (Aparece ao passar o mouse) */}
+            <div className="absolute right-0 top-6 hidden group-hover:block bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 shadow-xl z-50 text-left leading-relaxed">
+              <p className="font-bold text-amber-400 mb-1">📋 Resumo do Cálculo:</p>
+              <p>Unificação dos recursos líquidos da paróquia:</p>
+              <p>(+) Caixa Físico Atual: <span className="font-mono text-emerald-400">R$ 4.635,45</span></p>
+              <p>(+) Banco Sicoob Atual: <span className="font-mono text-blue-400">R$ 93.995,48</span></p>
+              <div className="border-t border-gray-700 my-1"></div>
+              <p className="font-bold">(=) Total Disponível: <span className="font-mono text-amber-400">R$ 98.630,93</span></p>
+            </div>
+          </div>
           <p className="text-xs text-gray-500 uppercase">Disponibilidade Real Total</p>
           <p className="text-sm text-gray-400 font-normal">Abertura: R$ {saldoInicialBanco.toFixed(2)}</p>
           <p className="text-2xl text-gray-800 mt-1">R$ {saldoFinalTotal.toFixed(2)}</p>
