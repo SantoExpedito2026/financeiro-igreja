@@ -294,22 +294,44 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento Mensal</h3>
-          <span className="text-xs font-bold text-gray-400">Uso das Receitas: {porcentagemDespesas.toFixed(0)}%</span>
-        </div>
-        <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
-          <div className="h-full rounded-full transition-all duration-500 bg-emerald-500" style={{ width: `${porcentagemDespesas}%` }}></div>
-        </div>
-        <div className="flex justify-between text-xs text-gray-400 font-medium mt-2">
-          <p>🟢 Ideal: Despesas abaixo de 70%</p>
-          <p className={totalGeralSaidas > totalGeralEntradas ? "text-rose-500 font-bold" : ""}>
-            {totalGeralSaidas > totalGeralEntradas ? "⚠️ Atenção: Deficit no mês!" : "✅ Caixa em equilíbrio"}
-          </p>
-        </div>
-      </div>
+            {/* 📊 PROPORÇÃO DO ORÇAMENTO MENSAL COM CORES DINÂMICAS E CÁLCULO DE DÉFICIT CORRIGIDO */}
+      {(() => {
+        const isDeficit = totalGeralSaidas > totalGeralEntradas;
+        const porcentagemTexto = totalGeralEntradas > 0 ? ((totalGeralSaidas / totalGeralEntradas) * 100).toFixed(0) : "0";
+        const larguraBarraVisual = Math.min(Number(porcentagemTexto), 100);
 
+        return (
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento Mensal</h3>
+              <span className={`text-xs font-bold ${isDeficit ? 'text-rose-600 animate-pulse' : 'text-gray-500'}`}>
+                Uso das Receitas: {porcentagemTexto}%
+              </span>
+            </div>
+            
+            {/* Barra com cores inteligentes baseadas no risco do mês */}
+            <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
+              <div 
+                className={`h-full rounded-full transition-all duration-500 ${
+                  isDeficit 
+                    ? 'bg-rose-500' 
+                    : Number(porcentagemTexto) > 70 
+                      ? 'bg-amber-500' 
+                      : 'bg-emerald-500'
+                }`} 
+                style={{ width: `${larguraBarraVisual}%` }}
+              ></div>
+            </div>
+
+            <div className="flex justify-between text-xs text-gray-400 font-medium mt-2">
+              <p>🟢 Ideal: Despesas abaixo de 70%</p>
+              <p className={isDeficit ? "text-rose-500 font-bold" : "text-emerald-600 font-bold"}>
+                {isDeficit ? "⚠️ Atenção: Deficit no mês!" : "✅ Caixa em equilíbrio"}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
           <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
