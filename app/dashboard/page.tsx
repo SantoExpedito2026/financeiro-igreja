@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [buscaTexto, setBuscaTexto] = useState('');
   
   const [editandoId, setEditandoId] = useState<number | null>(null);
+
   // 1. Monitorar o estado do login do usuário
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -165,6 +166,7 @@ export default function Dashboard() {
       console.error("Erro na operação:", error);
     }
   }
+
   if (loading) {
     return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados da Comunidade...</div>;
   }
@@ -263,7 +265,7 @@ export default function Dashboard() {
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg bg-gray-50 text-gray-700 font-bold" />
       </div>
 
-                      {/* 💳 CARDS DE SALDO COM BALÕES INFORMATIVOS PAROQUIAIS CORRIGIDOS */}
+      {/* 💳 CARDS DE SALDO COM BALÕES INFORMATIVOS PAROQUIAIS CORRIGIDOS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         
         {/* Caixa Físico Paroquial */}
@@ -341,8 +343,16 @@ export default function Dashboard() {
 
       </div>
 
-        );
-      })()}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center font-bold">
+        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+          <p className="text-xs text-emerald-700 uppercase">Total de Entradas no Período</p>
+          <p className="text-2xl text-emerald-600">+ R$ {totalGeralEntradas.toFixed(2)}</p>
+        </div>
+        <div className="bg-rose-50 p-4 rounded-xl border border-rose-200">
+          <p className="text-xs text-rose-700 uppercase">Total de Saídas no Período</p>
+          <p className="text-2xl text-rose-600">- R$ {totalGeralSaidas.toFixed(2)}</p>
+        </div>
+      </div>
 
       {/* 📊 PROPORÇÃO DO ORÇAMENTO MENSAL COM CORES DINÂMICAS E CÁLCULO DE DÉFICIT CORRIGIDO */}
       {(() => {
@@ -381,6 +391,7 @@ export default function Dashboard() {
           </div>
         );
       })()}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
           <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
@@ -398,147 +409,3 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-          <h3 className="text-sm font-bold text-rose-700 uppercase mb-3">💸 Saídas por Categoria</h3>
-          <div className="space-y-2 text-sm">
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([nome, c]) => (
-              <div key={nome} className="flex justify-between border-b pb-1">
-                <span className="text-gray-600 font-medium">{nome}</span>
-                <span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span>
-              </div>
-            ))}
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').length === 0 && (
-              <p className="text-gray-400 text-xs italic">Nenhuma despesa registrada neste mês.</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 print:hidden">
-        <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento Paroquial</h2>
-        <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Tipo de Movimento</label>
-            <select value={tipo} onChange={(e: any) => { setTipo(e.target.value); setCategoriaId(''); }} className="w-full border p-2 rounded-lg bg-gray-50">
-              <option value="ENTRADA">ENTRADA (Receitas)</option>
-              <option value="SAIDA">SAIDA (Despesas)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Categoria Paroquial</label>
-            <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="w-full border p-2 rounded-lg bg-gray-50">
-              <option value="">Selecione...</option>
-              {categorias.filter(c => c.tipo === tipo).map(c => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Conta de Destino/Origem</label>
-            <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="w-full border p-2 rounded-lg bg-gray-50">
-              <option value="">Selecione...</option>
-              {contas.map(c => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Forma de Pagamento</label>
-            <select value={formaPagamento} onChange={(e) => setFormaPagamento(e.target.value)} className="w-full border p-2 rounded-lg bg-gray-50">
-              <option value="Dinheiro">Dinheiro</option>
-              <option value="PIX">PIX</option>
-              <option value="Cartão">Cartão</option>
-              <option value="Boleto/Transferência">Boleto/Transferência</option>
-            </select>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-600 mb-1">Descrição / Nome do Fiel</label>
-            <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex: Dízimo Familiar ou Coleta da Missa" className="w-full border p-2 rounded-lg" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Valor (R$)</label>
-            <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" className="w-full border p-2 rounded-lg" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Data da Transação</label>
-            <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="w-full border p-2 rounded-lg" />
-          </div>
-          <div className="md:col-span-3 lg:col-span-4 flex justify-end gap-2 pt-2">
-            {(descricao || valor || editandoId) && (
-              <button type="button" onClick={limparFormulario} className="bg-gray-200 hover:bg-gray-300 text-gray-600 font-bold py-2 px-4 rounded-lg transition">
-                ❌ Cancelar
-              </button>
-            )}
-            <button type="submit" disabled={salvando} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg disabled:bg-gray-400 transition">
-              {salvando ? 'Salvando...' : editandoId ? '✨ Atualizar Lançamento' : '✨ Registrar no Fluxo'}
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 print:hidden">
-          <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
-          
-          <div className="flex bg-gray-100 p-1 rounded-lg border text-xs font-bold text-gray-600">
-            <button type="button" onClick={() => setFiltroTipo('TODOS')} className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'TODOS' ? 'bg-white text-gray-800 shadow-sm' : 'hover:text-gray-900'}`}>
-              Todos
-            </button>
-            <button type="button" onClick={() => setFiltroTipo('ENTRADA')} className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'ENTRADA' ? 'bg-emerald-600 text-white shadow-sm' : 'hover:text-emerald-600'}`}>
-              🟢 Entradas
-            </button>
-            <button type="button" onClick={() => setFiltroTipo('SAIDA')} className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'SAIDA' ? 'bg-rose-600 text-white shadow-sm' : 'hover:text-rose-600'}`}>
-              🔴 Saídas
-            </button>
-          </div>
-
-          <button onClick={() => window.print()} className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition flex items-center gap-2 self-end sm:self-auto">
-            🖨️ Imprimir Relatório Mensal
-          </button>
-        </div>
-
-        <div className="mb-4 print:hidden">
-          <input type="text" value={buscaTexto} onChange={(e) => setBuscaTexto(e.target.value)} placeholder="🔍 Procurar por nome de fiel, fornecedor ou descrição..." className="w-full border p-2 rounded-lg bg-gray-50 text-sm shadow-sm" />
-        </div>
-
-        <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
-
-        <table className="w-full text-left border-collapse table-fixed">
-          <thead>
-            <tr className="border-b text-gray-400 uppercase text-xs">
-              <th className="pb-3 w-[12%]">Data</th>
-              <th className="pb-3 w-[33%]">Descrição</th>
-              <th className="pb-3 w-[20%]">Categoria</th>
-              <th className="pb-3 w-[18%]">Conta</th>
-              <th className="pb-3 text-right w-[17%]">Valor</th>
-              <th className="pb-3 text-center print:hidden w-[10%]">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y text-sm text-gray-600">
-            {transacoesFiltradas.map((t) => (
-              <tr key={t.id} className="hover:bg-gray-50">
-                <td className="py-3 font-medium whitespace-nowrap">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                <td className="py-3 pr-4 break-words font-medium text-gray-800">{t.descricao}</td>
-                <td className="py-3 truncate">{t.categorias?.nome || t.categories?.nome || 'Sem categoria'}</td>
-                <td className="py-3 truncate">{t.contas?.nome || 'Sem conta'}</td>
-                <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
-                </td>
-                <td className="py-3 text-center print:hidden">
-                  <div className="flex items-center justify-center gap-2">
-                    <button type="button" onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition">✏️</button>
-                    <button type="button" onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition">🗑️</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {transacoesFiltradas.length === 0 && (
-              <tr>
-                <td colSpan={6} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
