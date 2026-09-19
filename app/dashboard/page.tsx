@@ -42,6 +42,7 @@ export default function Dashboard() {
     });
     return () => subscription.unsubscribe();
   }, []);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !password) return alert('Preencha o e-mail e a senha!');
@@ -70,14 +71,13 @@ export default function Dashboard() {
     } catch (error) { console.error(error); } finally { setLoading(false); }
   }
 
-    async function handleSalvar(e: React.FormEvent) {
+  async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
     setSalvando(true);
 
     let urlComprovante = null;
 
-    // Se houver um arquivo selecionado, faz o upload para o Supabase Storage
     if (arquivo && tipo === 'SAIDA') {
       const nomeArquivo = `${Date.now()}_${arquivo.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -89,7 +89,6 @@ export default function Dashboard() {
         return alert('Erro ao fazer upload do comprovante: ' + uploadError.message);
       }
 
-      // Pega a URL pública do arquivo enviado
       const { data: urlData } = supabase.storage.from('comprovantes').getPublicUrl(nomeArquivo);
       urlComprovante = urlData.publicUrl;
     }
@@ -103,7 +102,7 @@ export default function Dashboard() {
       forma_pagamento: formaPagamento, 
       data_transacao: dataTransacao, 
       status: 'CONCRETIZADO',
-      url_comprovante: urlComprovante // Salva o link do documento na tabela
+      url_comprovante: urlComprovante
     };
 
     let error = null;
@@ -123,7 +122,7 @@ export default function Dashboard() {
       setDescricao(''); 
       setValor(''); 
       setCategoriaId(''); 
-      setArquivo(null); // Limpa o arquivo selecionado
+      setArquivo(null); 
       setEditandoId(null); 
       carregarDados(); 
     }
@@ -133,6 +132,7 @@ export default function Dashboard() {
     setEditandoId(t.id); setDescricao(t.descricao); setValor(t.valor.toString()); setTipo(t.tipo);
     setCategoriaId(t.categoria_id.toString()); setContaId(t.conta_id.toString()); setFormaPagamento(t.forma_pagamento); setDataTransacao(t.data_transacao);
   }
+  
   function limparFormulario() { setDescricao(''); setValor(''); setCategoriaId(''); setEditandoId(null); }
 
   async function handleDeletar(id: number) {
@@ -140,7 +140,9 @@ export default function Dashboard() {
     const { error } = await supabase.from('transacoes').delete().eq('id', id);
     if (error) alert('Erro ao excluir: ' + error.message); else carregarDados();
   }
+
   if (loading) return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados...</div>;
+  
   if (!sessao) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -156,7 +158,8 @@ export default function Dashboard() {
     );
   }
 
-  const saldoInicialBanco = 100890.04; const saldoInicialCaixa = 3146.95;  
+  const saldoInicialBanco = 100890.04; 
+  const saldoInicialCaixa = 3146.95;  
   const transacoesFiltradas = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro) && t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase()) && (filtroTipo === 'TODOS' ? true : t.tipo === filtroTipo));
   let totalEntradasCaixa = 0; let totalSaidasCaixa = 0; let totalEntradasBanco = 0; let totalSaidasBanco = 0;
 
@@ -273,6 +276,7 @@ export default function Dashboard() {
           </div>
         );
       })()}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-xl border">
           <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
@@ -316,26 +320,24 @@ export default function Dashboard() {
           <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="border p-2 rounded-lg" />
           {tipo === 'SAIDA' && (
             <div className="flex flex-col">
-              <label className="text-xs text-gray-400 font-medium mb-1">📎 Anexar Comprovante (Nota/Boleto)</label>
+              <label className="text-xs text-gray-400 font-medium mb-1">Anexar Comprovante</label>
               <input 
                 type="file" 
                 accept="image/*,application/pdf"
                 onChange={(e) => setArquivo(e.target.files?.[0] || null)}
-                className="w-full border p-1.5 rounded-lg text-xs bg-gray-50 cursor-pointer file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-white hover:file:bg-zinc-700"
+                className="w-full border p-1.5 rounded-lg text-xs bg-gray-50 cursor-pointer"
               />
             </div>
           )}
-          <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg">{salvando ? 'Salvando...' : 'Registrar'}</button>
+          <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg">{salvando ? 'Salvando...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
         </form>
       </div>
 
-      {/* 📋 SEÇÃO DE LANÇAMENTOS RECENTES REVISADA COM BOTÕES DE AÇÕES E AJUSTE DE MOEDA */}
       <div className="bg-white p-6 rounded-xl border overflow-x-auto">
         <div className="flex justify-between items-center mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
           <button onClick={() => window.print()} className="bg-gray-800 text-white font-bold py-1.5 px-4 rounded-lg text-sm">🖨️ Imprimir</button>
         </div>
-        
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
@@ -355,40 +357,19 @@ export default function Dashboard() {
                 <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
                 <td className="py-3 text-center">
                   {t.url_comprovante ? (
-                    <a 
-                      href={t.url_comprovante} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="inline-block bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-1 px-2 rounded-md text-xs transition"
-                      title="Visualizar Comprovante Paroquial"
-                    >
-                      📄 Ver
-                    </a>
+                    <a href={t.url_comprovante} target="_blank" rel="noopener noreferrer" className="inline-block bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-1 px-2 rounded-md text-xs transition">📄 Ver</a>
                   ) : (
                     <span className="text-gray-300 text-xs italic">-</span>
                   )}
                 </td>
-                <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {t.tipo === 'ENTRADA' ? '+' : '-'} R\$ {Number(t.valor).toFixed(2)}
-                </td>
+                {/* Como deve ficar (Código Correto e Limpo): */}
+<td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
+  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
+</td>
                 <td className="py-3 text-center print:hidden">
                   <div className="flex items-center justify-center gap-1.5">
-                    <button 
-                      type="button" 
-                      onClick={() => iniciarEdicao(t)} 
-                      className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition"
-                      title="Editar Lançamento"
-                    >
-                      ✏️
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => handleDeletar(t.id)} 
-                      className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition"
-                      title="Excluir Lançamento"
-                    >
-                      🗑️
-                    </button>
+                    <button type="button" onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition" title="Editar">✏️</button>
+                    <button type="button" onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition" title="Excluir">🗑️</button>
                   </div>
                 </td>
               </tr>
@@ -401,6 +382,6 @@ export default function Dashboard() {
           </tbody>
         </table>
       </div>
+    </div>
   );
 }
-
