@@ -329,15 +329,63 @@ export default function Dashboard() {
               />
             </div>
           )}
-          <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg">{salvando ? 'Salvando...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
+                    <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg">{salvando ? 'Salvando...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
         </form>
       </div>
 
+      {/* 📋 SEÇÃO DE LANÇAMENTOS RECENTES COM FILTROS, BUSCA POR TEXTO E CONTROLE DE MOEDA CORRIGIDO */}
       <div className="bg-white p-6 rounded-xl border overflow-x-auto">
-        <div className="flex justify-between items-center mb-4 print:hidden">
+        
+        {/* Cabeçalho da Seção com Controle de Filtros por Estado */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
-          <button onClick={() => window.print()} className="bg-gray-800 text-white font-bold py-1.5 px-4 rounded-lg text-sm">🖨️ Imprimir</button>
+          
+          {/* Filtros de Tipo Dinâmicos */}
+          <div className="flex bg-gray-100 p-1 rounded-lg border text-xs font-bold text-gray-600">
+            <button 
+              type="button" 
+              onClick={() => setFiltroTipo('TODOS')} 
+              className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'TODOS' ? 'bg-white text-gray-800 shadow-sm' : 'hover:text-gray-900'}`}
+            >
+              Todos
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setFiltroTipo('ENTRADA')} 
+              className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'ENTRADA' ? 'bg-emerald-600 text-white shadow-sm' : 'hover:text-emerald-600'}`}
+            >
+              🟢 Entradas
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setFiltroTipo('SAIDA')} 
+              className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'SAIDA' ? 'bg-rose-600 text-white shadow-sm' : 'hover:text-rose-600'}`}
+            >
+              🔴 Saídas
+            </button>
+          </div>
+
+          <button onClick={() => window.print()} className="bg-gray-800 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition hover:bg-gray-900">
+            🖨️ Imprimir Relatório Mensal
+          </button>
         </div>
+
+        {/* Barra de Pesquisa por Texto Ativa */}
+        <div className="mb-4 print:hidden">
+          <input 
+            type="text" 
+            value={buscaTexto} 
+            onChange={(e) => setBuscaTexto(e.target.value)} 
+            placeholder="🔍 Procurar por nome de fiel, fornecedor ou descrição paroquial..." 
+            className="w-full border p-2 rounded-lg bg-gray-50 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-200" 
+          />
+        </div>
+
+        {/* Título de Impressão (Exibido apenas no papel) */}
+        <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">
+          📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito
+        </h2>
+        
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
@@ -362,10 +410,9 @@ export default function Dashboard() {
                     <span className="text-gray-300 text-xs italic">-</span>
                   )}
                 </td>
-                {/* Como deve ficar (Código Correto e Limpo): */}
-<td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
-  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
-</td>
+                <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {t.tipo === 'ENTRADA' ? '+' : '-'} R\$ {Number(t.valor).toFixed(2)}
+                </td>
                 <td className="py-3 text-center print:hidden">
                   <div className="flex items-center justify-center gap-1.5">
                     <button type="button" onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition" title="Editar">✏️</button>
