@@ -54,8 +54,8 @@ export default function Dashboard() {
   async function carregarDados() {
     setLoading(true);
     try {
-      const { data: t } = await supabase.from('transacoes').select('*, categorias(nome), contas(nome)').order('data_transacao', { ascending: true });
-      const { data: c } = await supabase.from('categorias').select('*');
+      const { data: t } = await supabase.from('transacoes').select('*, categorias(nome, tipo), contas(nome)').order('data_transacao', { ascending: true });
+      const { data: c } = await supabase.from('categorias').select('*').order('nome', { ascending: true });
       const { data: co } = await supabase.from('contas').select('*');
       if (t) setTransacoes(t);
       if (c) setCategorias(c);
@@ -77,7 +77,6 @@ export default function Dashboard() {
     const limpo = valorFormatado.replace(/[^\d,]/g, '').replace(',', '.');
     return parseFloat(limpo) || 0;
   }
-
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
@@ -137,7 +136,9 @@ export default function Dashboard() {
 
   transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
     const p = Number(t.valor);
-    const isTransferencia = t.descricao?.toLowerCase().includes('transferência para o sicoob') || t.descricao?.toLowerCase().includes('depósito de caixa');
+    // Identifica se pertence à categoria de transferência por nome ou se tem palavra-chave na descrição
+    const nomeCategoria = t.categorias?.nome?.toLowerCase() || '';
+    const isTransferencia = nomeCategoria.includes('transferência') || nomeCategoria.includes('depósito') || t.descricao?.toLowerCase().includes('transferência para o sicoob');
 
     if (t.tipo === 'ENTRADA') { 
       t.conta_id === 1 ? totalEntradasCaixa += p : totalEntradasBanco += p; 
@@ -178,8 +179,14 @@ export default function Dashboard() {
 
       {/* 💳 CARDS DE SALDO REVISADOS COM CORES, COMPENSAÇÃO DE TRANSFERÊNCIAS E TOOLTIPS FIXADOS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
+        
+        {/* Caixa Físico */}
         <div className="bg-white p-4 rounded-xl border shadow-sm relative">
-          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
+          <div 
+            className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30"
+            onMouseEnter={() => setTooltipAtivo('caixa')}
+            onMouseLeave={() => setTooltipAtivo(null)}
+          >
             ⓘ
             {tooltipAtivo === 'caixa' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
@@ -197,8 +204,13 @@ export default function Dashboard() {
           <p className="text-xl text-emerald-600 mt-1">Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
         </div>
 
+        {/* Contas Bancárias (Sicoob) */}
         <div className="bg-white p-4 rounded-xl border shadow-sm relative">
-          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('sicoob')} onMouseLeave={() => setTooltipAtivo(null)}>
+          <div 
+            className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30"
+            onMouseEnter={() => setTooltipAtivo('sicoob')}
+            onMouseLeave={() => setTooltipAtivo(null)}
+          >
             ⓘ
             {tooltipAtivo === 'sicoob' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
@@ -216,8 +228,13 @@ export default function Dashboard() {
           <p className="text-xl text-blue-600 mt-1">Atual: R$ {saldoAtualBanco.toFixed(2)}</p>
         </div>
 
+        {/* Disponibilidade Real Total */}
         <div className="bg-white p-4 rounded-xl border bg-gradient-to-br from-gray-50 to-gray-100 relative">
-          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('total')} onMouseLeave={() => setTooltipAtivo(null)}>
+          <div 
+            className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30"
+            onMouseEnter={() => setTooltipAtivo('total')}
+            onMouseLeave={() => setTooltipAtivo(null)}
+          >
             ⓘ
             {tooltipAtivo === 'total' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
@@ -247,6 +264,22 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {(() => {
+        const isDeficit = totalGeralSaidas > totalGeralEntradas;
+        const pct = totalGeralEntradas > 0 ? ((totalGeralSaidas / totalGeralEntradas) * 100).toFixed(0) : "0";
+        return (
+          <div className="bg-white p-6 rounded-xl border print:hidden">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento</h3>
+              <span className={`text-xs font-bold ${isDeficit ? 'text-rose-600' : 'text-gray-500'}`}>Uso: {pct}%</span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
+              <div className={`h-full transition-all duration-500 ${isDeficit ? 'bg-rose-500' : Number(pct) > 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(Number(pct), 100)}%` }}></div>
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-xl border">
           <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
@@ -275,18 +308,26 @@ export default function Dashboard() {
           </select>
           <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="border p-2 rounded-lg bg-gray-50">
             <option value="">Categoria...</option>
-            {categorias.filter(c => c.tipo === tipo).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
           <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="border p-2 rounded-lg bg-gray-50">
             <option value="">Conta...</option>
             {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
           <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição" className="border p-2 rounded-lg" />
-          <input type="text" value={valor} onChange={(e) => setValor(formatarMoeda(e.target.value))} placeholder="R$ 0,00" className="border p-2 rounded-lg font-mono font-bold" />
+          
+          {/* Input de Valor Atualizado com Máscara de Moeda Inteligente em Tempo Real */}
+          <input 
+            type="text" 
+            value={valor} 
+            onChange={(e) => setValor(formatarMoeda(e.target.value))} 
+            placeholder="R$ 0,00" 
+            className="border p-2 rounded-lg font-mono font-bold" 
+          />
+          
           <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="border p-2 rounded-lg" />
           {tipo === 'SAIDA' && (
             <div className="flex flex-col">
-              <input type="file" accept="image/*,application/pdf" onChange={(e) => setArquivo(e.target.files?.[0] || null)} className="w-full border p-1 rounded-lg text-xs bg-gray-50" />
+              <input type="file" accept="image/*,application/pdf" onChange={(e) => setArquivo(e.target.files?.[0] || null)} className="w-full border p-1 rounded-lg text-xs bg-gray-50 cursor-pointer" />
             </div>
           )}
           <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg hover:bg-blue-700 transition">{salvando ? '...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
@@ -305,7 +346,7 @@ export default function Dashboard() {
         </div>
         
         <div className="mb-4 print:hidden">
-          <input type="text" value={buscaTexto} onChange={(e) => setBuscaTexto(e.target.value)} placeholder="🔍 Procurar por dízimos, ofertas ou despesas..." className="w-full border p-2 rounded-lg bg-gray-50 text-sm focus:outline-none" />
+          <input type="text" value={buscaTexto} onChange={(e) => setBuscaTexto(e.target.value)} placeholder="🔍 Procurar dízimos, ofertas ou despesas..." className="w-full border p-2 rounded-lg bg-gray-50 text-sm focus:outline-none" />
         </div>
 
         <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block text-center border-b pb-2">
@@ -336,7 +377,7 @@ export default function Dashboard() {
                   )}
                   <span className="hidden print:inline text-xs text-gray-400">{t.url_comprovante ? 'Sim' : 'Não'}</span>
                 </td>
-                <td className="py-3 text-right font-bold whitespace-nowrap text-gray-700">
+                <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
                 <td className="py-3 text-center print:hidden">
