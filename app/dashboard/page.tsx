@@ -151,16 +151,18 @@ export default function Dashboard() {
         <div className="bg-white p-4 rounded-xl border relative">
           <div className="absolute top-2 right-3 text-gray-400 cursor-pointer text-base" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
             ⓘ
-            {tooltipAtivo === 'caixa' && (
-              <div className="absolute right-0 top-6 bg-gray-990 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
-                <p className="font-bold text-emerald-400">📋 Resumo do Cálculo:</p>
-                <p>Saldo Inicial: R$ {saldoInicialCaixa.toFixed(2)}</p>
-                <p>{isAgosto ? "(+) Fechamento de Mês:" : "(+) Entradas Mês:"} R$ 1.488,50</p>
-                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
-              </div>
-            )}
+            {/*  Código Corrigido com fundo escuro sólido */}
+{tooltipAtivo === 'caixa' && (
+  <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-xl pointer-events-none">
+    <p className="font-bold text-emerald-400 mb-1">📋 Resumo do Cálculo:</p>
+    <p className="text-zinc-300">Saldo Inicial: <span className="font-mono text-white">R$ {saldoInicialCaixa.toFixed(2)}</span></p>
+    <p className="text-zinc-300">{isAgosto ? "(+) Fechamento:" : "(+) Entradas Mês:"} <span className="font-mono text-white">R$ 1.488,50</span></p>
+    <div className="border-t border-zinc-700 my-1.5"></div>
+    <p className="font-bold text-zinc-100">(=) Atual: <span className="font-mono text-emerald-400">R$ {saldoAtualCaixa.toFixed(2)}</span></p>
+  </div>
+)}
           </div>
-          <p className="text-xs text-gray-400 uppercase">Caixa Físico Paroquial</p>
+          <p className="text-xs text-gray-400 uppercase">Caixa Físico</p>
           <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialCaixa.toFixed(2)}</p>
           <p className="text-xl text-emerald-600 mt-1">Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
         </div>
@@ -247,7 +249,7 @@ export default function Dashboard() {
       </div>
 
       <div className="bg-white p-6 rounded-xl border print:hidden">
-        <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento Paroquial</h2>
+        <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento</h2>
         <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <select value={tipo} onChange={(e: any) => { setTipo(e.target.value); setCategoriaId(''); }} className="border p-2 rounded-lg bg-gray-50">
             <option value="ENTRADA">ENTRADA (Receitas)</option>
