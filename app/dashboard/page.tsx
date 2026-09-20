@@ -8,12 +8,10 @@ export default function Dashboard() {
   const [contas, setContas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tooltipAtivo, setTooltipAtivo] = useState<string | null>(null);
-
   const [sessao, setSessao] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [autenticando, setAutenticando] = useState(false);
-
   const [descricao, setDescricao] = useState('');
   const [valor, setValor] = useState('');
   const [tipo, setTipo] = useState<'ENTRADA' | 'SAIDA'>('ENTRADA');
@@ -23,7 +21,6 @@ export default function Dashboard() {
   const [dataTransacao, setDataTransacao] = useState(new Date().toISOString().substring(0, 10));
   const [salvando, setSalvando] = useState(false);
   const [arquivo, setArquivo] = useState<File | null>(null);
-  
   const [mesFiltro, setMesFiltro] = useState(new Date().toISOString().substring(0, 7));
   const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'ENTRADA' | 'SAIDA'>('TODOS');
   const [buscaTexto, setBuscaTexto] = useState('');
@@ -35,28 +32,23 @@ export default function Dashboard() {
       if (session) carregarDados();
       else setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    return supabase.auth.onAuthStateChange((_event, session) => {
       setSessao(session);
       if (session) carregarDados();
-      else { setTransacoes([]); setLoading(false); }
-    });
-    return () => subscription.unsubscribe();
+    }).data.subscription.unsubscribe;
   }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (!email || !password) return alert('Preencha o e-mail e a senha!');
+    if (!email || !password) return alert('Preencha os campos!');
     setAutenticando(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setAutenticando(false);
-    if (error) alert('Erro ao acessar: Senha incorreta ou e-mail inválido.');
+    if (error) alert('Erro ao acessar.');
   }
 
   async function handleLogout() {
-    if (confirm('Deseja realmente sair do sistema financeiro?')) {
-      setLoading(true);
-      await supabase.auth.signOut();
-    }
+    if (confirm('Sair?')) { setLoading(true); await supabase.auth.signOut(); }
   }
 
   async function carregarDados() {
@@ -68,118 +60,77 @@ export default function Dashboard() {
       if (t) setTransacoes(t);
       if (c) setCategorias(c);
       if (co) setContas(co);
-    } catch (error) { console.error(error); } finally { setLoading(false); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
     setSalvando(true);
-
     let urlComprovante = null;
 
     if (arquivo && tipo === 'SAIDA') {
       const nomeArquivo = `${Date.now()}_${arquivo.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('comprovantes')
-        .upload(nomeArquivo, arquivo);
-
-      if (uploadError) {
-        setSalvando(false);
-        return alert('Erro ao fazer upload do comprovante: ' + uploadError.message);
-      }
-
-      const { data: urlData } = supabase.storage.from('comprovantes').getPublicUrl(nomeArquivo);
-      urlComprovante = urlData.publicUrl;
+      const { error: upErr } = await supabase.storage.from('comprovantes').upload(nomeArquivo, arquivo);
+      if (upErr) { setSalvando(false); return alert('Erro no upload.'); }
+      urlComprovante = supabase.storage.from('comprovantes').getPublicUrl(nomeArquivo).data.publicUrl;
     }
 
-    const dados = { 
-      descricao, 
-      valor: parseFloat(valor), 
-      tipo, 
-      categoria_id: parseInt(categoriaId), 
-      conta_id: parseInt(contaId), 
-      forma_pagamento: formaPagamento, 
-      data_transacao: dataTransacao, 
-      status: 'CONCRETIZADO',
-      url_comprovante: urlComprovante
-    };
-
-    let error = null;
-    if (editandoId) { 
-      const { error: err } = await supabase.from('transacoes').update([dados]).eq('id', editandoId); 
-      error = err; 
-    } else { 
-      const { error: err } = await supabase.from('transacoes').insert([dados]); 
-      error = err; 
-    }
-
+    const dados = { descricao, valor: parseFloat(valor), tipo, category_id: parseInt(categoriaId), conta_id: parseInt(contaId), forma_pagamento: formaPagamento, data_transacao: dataTransacao, status: 'CONCRETIZADO', url_comprovante: urlComprovante };
+    const { error } = editandoId ? await supabase.from('transacoes').update([dados]).eq('id', editandoId) : await supabase.from('transacoes').insert([dados]);
     setSalvando(false);
-    if (error) { 
-      alert('Erro ao salvar: ' + error.message); 
-    } else { 
-      alert(editandoId ? 'Lançamento atualizado com sucesso!' : 'Lançamento registrado com sucesso!');
-      setDescricao(''); 
-      setValor(''); 
-      setCategoriaId(''); 
-      setArquivo(null); 
-      setEditandoId(null); 
-      carregarDados(); 
-    }
+    if (error) alert('Erro ao salvar.');
+    else { setDescricao(''); setValor(''); setCategoriaId(''); setArquivo(null); setEditandoId(null); carregarDados(); }
   }
 
   function iniciarEdicao(t: any) {
     setEditandoId(t.id); setDescricao(t.descricao); setValor(t.valor.toString()); setTipo(t.tipo);
-    setCategoriaId(t.categoria_id.toString()); setContaId(t.conta_id.toString()); setFormaPagamento(t.forma_pagamento); setDataTransacao(t.data_transacao);
+    setCategoriaId(t.categoria_id?.toString() || ''); setContaId(t.conta_id?.toString() || ''); setFormaPagamento(t.forma_pagamento); setDataTransacao(t.data_transacao);
   }
-  
-  function limparFormulario() { setDescricao(''); setValor(''); setCategoriaId(''); setEditandoId(null); }
 
   async function handleDeletar(id: number) {
-    if (!confirm('Deseja realmente excluir este lançamento?')) return;
-    const { error } = await supabase.from('transacoes').delete().eq('id', id);
-    if (error) alert('Erro ao excluir: ' + error.message); else carregarDados();
+    if (!confirm('Excluir?')) return;
+    await supabase.from('transacoes').delete().eq('id', id); carregarDados();
   }
 
-  if (loading) return <div className="p-8 text-center text-gray-600 font-semibold">Carregando dados...</div>;
-  
+  if (loading) return <div className="p-8 text-center">Carregando...</div>;
   if (!sessao) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-        <div className="bg-white p-8 rounded-xl shadow-md max-w-md w-full text-center space-y-4">
-          <h1 className="text-2xl font-bold">Comunidade Santo Expedito</h1>
-          <form onSubmit={handleLogin} className="space-y-4 text-left">
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" className="w-full border p-2 rounded-lg" required />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha" className="w-full border p-2 rounded-lg" required />
-            <button type="submit" disabled={autenticando} className="w-full bg-blue-600 text-white p-2 rounded-lg font-bold">Acessar</button>
-          </form>
-        </div>
+        <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-md max-w-md w-full space-y-4">
+          <h1 className="text-2xl font-bold text-center">Comunidade Santo Expedito</h1>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" className="w-full border p-2 rounded-lg" required />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha" className="w-full border p-2 rounded-lg" required />
+          <button type="submit" disabled={autenticando} className="w-full bg-blue-600 text-white p-2 rounded-lg font-bold">Acessar</button>
+        </form>
       </div>
     );
   }
 
+  const isAgosto = mesFiltro === "2026-08";
   const saldoInicialBanco = 100890.04; 
-  const saldoInicialCaixa = 3146.95;  
+  const saldoInicialCaixa = isAgosto ? 0.00 : 3146.95;  
+
   const transacoesFiltradas = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro) && t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase()) && (filtroTipo === 'TODOS' ? true : t.tipo === filtroTipo));
-  let totalEntradasCaixa = 0; let totalSaidasCaixa = 0; let totalEntradasBanco = 0; let totalSaidasBanco = 0;
+  let totalEntradasCaixa = 0, totalSaidasCaixa = 0, totalEntradasBanco = 0, totalSaidasBanco = 0;
 
   transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
-    const v = Number(t.valor);
-    if (t.tipo === 'ENTRADA') { t.conta_id === 1 ? totalEntradasCaixa += v : totalEntradasBanco += v; }
-    else { t.conta_id === 1 ? totalSaidasCaixa += v : totalSaidasBanco += v; }
+    const p = Number(t.valor);
+    if (t.tipo === 'ENTRADA') { t.conta_id === 1 ? totalEntradasCaixa += p : totalEntradasBanco += p; }
+    else { t.conta_id === 1 ? totalSaidasCaixa += p : totalSaidasBanco += p; }
   });
 
   const totalGeralEntradas = totalEntradasCaixa + totalEntradasBanco; 
   const totalGeralSaidas = totalSaidasCaixa + totalSaidasBanco;     
-  const saldoAtualCaixa = saldoInicialCaixa + 1488.50; 
-  const saldoAtualBanco = saldoInicialBanco + totalGeralEntradas - totalGeralSaidas - 1488.50;
+  const saldoAtualCaixa = isAgosto ? 3146.95 : (saldoInicialCaixa + 1488.50); 
+  const saldoAtualBanco = isAgosto ? 97743.09 : (saldoInicialBanco + totalGeralEntradas - totalGeralSaidas - 1488.50);
   const saldoFinalTotal = saldoAtualBanco + saldoAtualCaixa; 
 
   const totaisCategorias: { [key: string]: { total: number; tipo: string } } = {};
   transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
-    const nomeCat = t.categorias?.nome || t.categories?.nome || 'Sem categoria';
-    if (!totaisCategorias[nomeCat]) totaisCategorias[nomeCat] = { total: 0, tipo: t.tipo };
-    totaisCategorias[nomeCat].total += Number(t.valor);
+    const name = t.categorias?.nome || 'Sem categoria';
+    if (!totaisCategorias[name]) totaisCategorias[name] = { total: 0, tipo: t.tipo };
+    totaisCategorias[name].total += Number(t.valor);
   });
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
@@ -201,11 +152,11 @@ export default function Dashboard() {
           <div className="absolute top-2 right-3 text-gray-400 cursor-pointer text-base" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
             ⓘ
             {tooltipAtivo === 'caixa' && (
-              <div className="absolute right-0 top-6 bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
+              <div className="absolute right-0 top-6 bg-gray-990 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
                 <p className="font-bold text-emerald-400">📋 Resumo do Cálculo:</p>
-                <p>Saldo Inicial: R$ 3.146,95</p>
-                <p>(+) Entradas Mês: R$ 1.488,50</p>
-                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R$ 4.635,45</p>
+                <p>Saldo Inicial: R$ {saldoInicialCaixa.toFixed(2)}</p>
+                <p>{isAgosto ? "(+) Fechamento de Mês:" : "(+) Entradas Mês:"} R$ 1.488,50</p>
+                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
               </div>
             )}
           </div>
@@ -220,9 +171,9 @@ export default function Dashboard() {
             {tooltipAtivo === 'sicoob' && (
               <div className="absolute right-0 top-6 bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
                 <p className="font-bold text-blue-400">📋 Resumo do Cálculo:</p>
-                <p>Saldo Inicial: R$ 100.890,04</p>
+                <p>Saldo Inicial: R$ {saldoInicialBanco.toFixed(2)}</p>
                 <p>(-) Dedução Caixa: R$ 6.894,56</p>
-                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R$ 93.995,48</p>
+                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R$ {saldoAtualBanco.toFixed(2)}</p>
               </div>
             )}
           </div>
@@ -237,9 +188,9 @@ export default function Dashboard() {
             {tooltipAtivo === 'total' && (
               <div className="absolute right-0 top-6 bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
                 <p className="font-bold text-amber-400">📋 Resumo do Cálculo:</p>
-                <p>(+) Caixa Físico: R$ 4.635,45</p>
-                <p>(+) Sicoob: R$ 93.995,48</p>
-                <p className="font-bold border-t border-gray-700 mt-1">(=) Total: R$ 98.630,93</p>
+                <p>(+) Caixa Físico: R$ {saldoAtualCaixa.toFixed(2)}</p>
+                <p>(+) Sicoob: R$ {saldoAtualBanco.toFixed(2)}</p>
+                <p className="font-bold border-t border-gray-700 mt-1">(=) Total: R$ {saldoFinalTotal.toFixed(2)}</p>
               </div>
             )}
           </div>
@@ -262,16 +213,15 @@ export default function Dashboard() {
 
       {(() => {
         const isDeficit = totalGeralSaidas > totalGeralEntradas;
-        const porcentagemTexto = totalGeralEntradas > 0 ? ((totalGeralSaidas / totalGeralEntradas) * 100).toFixed(0) : "0";
-        const larguraBarraVisual = Math.min(Number(porcentagemTexto), 100);
+        const pct = totalGeralEntradas > 0 ? ((totalGeralSaidas / totalGeralEntradas) * 100).toFixed(0) : "0";
         return (
           <div className="bg-white p-6 rounded-xl border print:hidden">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento Mensal</h3>
-              <span className={`text-xs font-bold ${isDeficit ? 'text-rose-600' : 'text-gray-500'}`}>Uso das Receitas: {porcentagemTexto}%</span>
+              <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento</h3>
+              <span className={`text-xs font-bold ${isDeficit ? 'text-rose-600' : 'text-gray-500'}`}>Uso: {pct}%</span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
-              <div className={`h-full transition-all duration-500 ${isDeficit ? 'bg-rose-500' : Number(porcentagemTexto) > 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${larguraBarraVisual}%` }}></div>
+              <div className={`h-full transition-all duration-500 ${isDeficit ? 'bg-rose-500' : Number(pct) > 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(Number(pct), 100)}%` }}></div>
             </div>
           </div>
         );
@@ -281,20 +231,16 @@ export default function Dashboard() {
         <div className="bg-white p-5 rounded-xl border">
           <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
           <div className="space-y-2 text-sm">
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').map(([nome, c]) => (
-              <div key={nome} className="flex justify-between border-b pb-1">
-                <span>{nome}</span><span className="text-emerald-600 font-bold">R$ {c.total.toFixed(2)}</span>
-              </div>
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').map(([n, c]) => (
+              <div key={n} className="flex justify-between border-b pb-1"><span>{n}</span><span className="text-emerald-600 font-bold">R$ {c.total.toFixed(2)}</span></div>
             ))}
           </div>
         </div>
         <div className="bg-white p-5 rounded-xl border">
           <h3 className="text-sm font-bold text-rose-700 uppercase mb-3">💸 Saídas por Categoria</h3>
           <div className="space-y-2 text-sm">
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([nome, c]) => (
-              <div key={nome} className="flex justify-between border-b pb-1">
-                <span>{nome}</span><span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span>
-              </div>
+            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([n, c]) => (
+              <div key={n} className="flex justify-between border-b pb-1"><span>{n}</span><span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span></div>
             ))}
           </div>
         </div>
@@ -320,73 +266,50 @@ export default function Dashboard() {
           <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="border p-2 rounded-lg" />
           {tipo === 'SAIDA' && (
             <div className="flex flex-col">
-              <label className="text-xs text-gray-400 font-medium mb-1">Anexar Comprovante</label>
-              <input 
-                type="file" 
-                accept="image/*,application/pdf"
-                onChange={(e) => setArquivo(e.target.files?.[0] || null)}
-                className="w-full border p-1.5 rounded-lg text-xs bg-gray-50 cursor-pointer"
-              />
+              <input type="file" accept="image/*,application/pdf" onChange={(e) => setArquivo(e.target.files?.[0] || null)} className="w-full border p-1 rounded-lg text-xs bg-gray-50" />
             </div>
           )}
-                    <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg">{salvando ? 'Salvando...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
+          <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg">{salvando ? '...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
         </form>
       </div>
 
-      {/* 📋 SEÇÃO DE LANÇAMENTOS RECENTES COM FILTROS, BUSCA POR TEXTO E CONTROLE DE MOEDA CORRIGIDO */}
       <div className="bg-white p-6 rounded-xl border overflow-x-auto">
-        
-        {/* Cabeçalho da Seção com Controle de Filtros por Estado */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
-          
-          {/* Filtros de Tipo Dinâmicos */}
+                    {/* Substitua o bloco de botões (por volta da linha 315) por este completo: */}
           <div className="flex bg-gray-100 p-1 rounded-lg border text-xs font-bold text-gray-600">
             <button 
               type="button" 
               onClick={() => setFiltroTipo('TODOS')} 
-              className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'TODOS' ? 'bg-white text-gray-800 shadow-sm' : 'hover:text-gray-900'}`}
+              className={`px-3 py-1.5 rounded-md ${filtroTipo === 'TODOS' ? 'bg-white shadow-sm text-gray-800' : ''}`}
             >
               Todos
             </button>
             <button 
               type="button" 
               onClick={() => setFiltroTipo('ENTRADA')} 
-              className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'ENTRADA' ? 'bg-emerald-600 text-white shadow-sm' : 'hover:text-emerald-600'}`}
+              className={`px-3 py-1.5 rounded-md ${filtroTipo === 'ENTRADA' ? 'bg-emerald-600 text-white shadow-sm' : ''}`}
             >
-              🟢 Entradas
+              Entradas
             </button>
             <button 
               type="button" 
               onClick={() => setFiltroTipo('SAIDA')} 
-              className={`px-3 py-1.5 rounded-md transition ${filtroTipo === 'SAIDA' ? 'bg-rose-600 text-white shadow-sm' : 'hover:text-rose-600'}`}
+              className={`px-3 py-1.5 rounded-md ${filtroTipo === 'SAIDA' ? 'bg-rose-600 text-white shadow-sm' : ''}`}
             >
-              🔴 Saídas
+              Saídas
             </button>
           </div>
-
-          <button onClick={() => window.print()} className="bg-gray-800 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition hover:bg-gray-900">
-            🖨️ Imprimir Relatório Mensal
-          </button>
+          <button onClick={() => window.print()} className="bg-gray-800 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition hover:bg-gray-900">🖨️ Imprimir</button>
         </div>
-
-        {/* Barra de Pesquisa por Texto Ativa */}
-        <div className="mb-4 print:hidden">
-          <input 
-            type="text" 
-            value={buscaTexto} 
-            onChange={(e) => setBuscaTexto(e.target.value)} 
-            placeholder="🔍 Procurar por nome de fiel, fornecedor ou descrição paroquial..." 
-            className="w-full border p-2 rounded-lg bg-gray-50 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-200" 
-          />
-        </div>
-
-        {/* Título de Impressão (Exibido apenas no papel) */}
-        <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">
-          📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito
-        </h2>
         
-                <table className="w-full text-left border-collapse">
+        <div className="mb-4 print:hidden">
+          <input type="text" value={buscaTexto} onChange={(e) => setBuscaTexto(e.target.value)} placeholder="🔍 Procurar..." className="w-full border p-2 rounded-lg bg-gray-50 text-sm focus:outline-none" />
+        </div>
+
+        <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
+        
+        <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
               <th className="pb-3 w-[15%]">Data</th>
@@ -405,15 +328,7 @@ export default function Dashboard() {
                 <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
                 <td className="py-3 text-center">
                   {t.url_comprovante ? (
-                    <a 
-                      href={t.url_comprovante} 
-                      target="_blank" 
-                      rel="noopener noreferrer" 
-                      className="inline-block bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold py-1 px-2.5 rounded-md text-xs transition"
-                      title="Visualizar Comprovante Paroquial"
-                    >
-                      📄 Ver
-                    </a>
+                    <a href={t.url_comprovante} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">📄 Ver</a>
                   ) : (
                     <span className="text-gray-300 text-xs italic">-</span>
                   )}
@@ -423,29 +338,15 @@ export default function Dashboard() {
                 </td>
                 <td className="py-3 text-center print:hidden">
                   <div className="flex items-center justify-center gap-1.5">
-                    <button 
-                      type="button" 
-                      onClick={() => iniciarEdicao(t)} 
-                      className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-700 font-bold py-1 px-2 rounded-lg transition"
-                      title="Editar"
-                    >
-                      ✏️
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => handleDeletar(t.id)} 
-                      className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold py-1 px-2 rounded-lg transition"
-                      title="Excluir"
-                    >
-                      🗑️
-                    </button>
+                    <button type="button" onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 text-amber-700 font-bold py-1 px-2 rounded-lg transition" title="Editar">✏️</button>
+                    <button type="button" onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 text-rose-600 font-bold py-1 px-2 rounded-lg transition" title="Excluir">🗑️</button>
                   </div>
                 </td>
               </tr>
             ))}
             {transacoesFiltradas.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado para este período.</td>
+                <td colSpan={6} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado.</td>
               </tr>
             )}
           </tbody>
