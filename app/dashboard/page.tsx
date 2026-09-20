@@ -63,6 +63,21 @@ export default function Dashboard() {
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }
 
+  function formatarMoeda(valorDigitado: string) {
+    const apenasNumeros = valorDigitado.replace(/\D/g, '');
+    if (!apenasNumeros) return '';
+    const valorDecimal = (Number(apenasNumeros) / 100).toFixed(2);
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(Number(valorDecimal));
+  }
+
+  function converterMoedaParaFloat(valorFormatado: string) {
+    const limpo = valorFormatado.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(limpo) || 0;
+  }
+
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
     if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
@@ -76,7 +91,9 @@ export default function Dashboard() {
       urlComprovante = supabase.storage.from('comprovantes').getPublicUrl(nomeArquivo).data.publicUrl;
     }
 
-    const dados = { descricao, valor: parseFloat(valor), tipo, category_id: parseInt(categoriaId), conta_id: parseInt(contaId), forma_pagamento: formaPagamento, data_transacao: dataTransacao, status: 'CONCRETIZADO', url_comprovante: urlComprovante };
+    const valorNumericoReal = converterMoedaParaFloat(valor);
+
+    const dados = { descricao, valor: valorNumericoReal, tipo, category_id: parseInt(categoriaId), conta_id: parseInt(contaId), forma_pagamento: formaPagamento, data_transacao: dataTransacao, status: 'CONCRETIZADO', url_comprovante: urlComprovante };
     const { error } = editandoId ? await supabase.from('transacoes').update([dados]).eq('id', editandoId) : await supabase.from('transacoes').insert([dados]);
     setSalvando(false);
     if (error) alert('Erro ao salvar.');
@@ -84,8 +101,10 @@ export default function Dashboard() {
   }
 
   function iniciarEdicao(t: any) {
-    setEditandoId(t.id); setDescricao(t.descricao); setValor(t.valor.toString()); setTipo(t.tipo);
-    setCategoriaId(t.categoria_id?.toString() || ''); setContaId(t.conta_id?.toString() || ''); setFormaPagamento(t.forma_pagamento); setDataTransacao(t.data_transacao);
+    setEditandoId(t.id); setDescricao(t.descricao);
+    const valorFormatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.valor);
+    setValor(valorFormatado); setTipo(t.tipo);
+    setCategoriaId(t.category_id?.toString() || ''); setContaId(t.conta_id?.toString() || ''); setFormaPagamento(t.forma_pagamento); setDataTransacao(t.data_transacao);
   }
 
   async function handleDeletar(id: number) {
@@ -101,7 +120,7 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-center">Comunidade Santo Expedito</h1>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" className="w-full border p-2 rounded-lg" required />
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha" className="w-full border p-2 rounded-lg" required />
-          <button type="submit" disabled={autenticando} className="w-full bg-blue-600 text-white p-2 rounded-lg font-bold">Acessar</button>
+          <button type="submit" disabled={autenticando} className="w-full bg-blue-600 text-white p-2 rounded-lg font-bold">{autenticando ? 'Acessando...' : 'Acessar'}</button>
         </form>
       </div>
     );
@@ -112,18 +131,28 @@ export default function Dashboard() {
   const saldoInicialCaixa = isAgosto ? 0.00 : 3146.95;  
 
   const transacoesFiltradas = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro) && t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase()) && (filtroTipo === 'TODOS' ? true : t.tipo === filtroTipo));
+  
   let totalEntradasCaixa = 0, totalSaidasCaixa = 0, totalEntradasBanco = 0, totalSaidasBanco = 0;
+  let totalTransferidoParaSicoob = 0;
 
   transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
     const p = Number(t.valor);
-    if (t.tipo === 'ENTRADA') { t.conta_id === 1 ? totalEntradasCaixa += p : totalEntradasBanco += p; }
-    else { t.conta_id === 1 ? totalSaidasCaixa += p : totalSaidasBanco += p; }
+    const isTransferencia = t.descricao?.toLowerCase().includes('transferência para o sicoob') || t.descricao?.toLowerCase().includes('depósito de caixa');
+
+    if (t.tipo === 'ENTRADA') { 
+      t.conta_id === 1 ? totalEntradasCaixa += p : totalEntradasBanco += p; 
+    } else { 
+      t.conta_id === 1 ? totalSaidasCaixa += p : totalSaidasBanco += p; 
+      if (t.conta_id === 1 && isTransferencia) {
+        totalTransferidoParaSicoob += p;
+      }
+    }
   });
 
-  const totalGeralEntradas = totalEntradasCaixa + totalEntradasBanco; 
-  const totalGeralSaidas = totalSaidasCaixa + totalSaidasBanco;     
-  const saldoAtualCaixa = isAgosto ? 3146.95 : (saldoInicialCaixa + 1488.50); 
-  const saldoAtualBanco = isAgosto ? 97743.09 : (saldoInicialBanco + totalGeralEntradas - totalGeralSaidas - 1488.50);
+  const totalGeralEntradas = totalEntradasCaixa + totalEntradasBanco - totalTransferidoParaSicoob; 
+  const totalGeralSaidas = totalSaidasCaixa + totalSaidasBanco - totalTransferidoParaSicoob;     
+  const saldoAtualCaixa = isAgosto ? 3146.95 : (saldoInicialCaixa + 1488.50 - totalTransferidoParaSicoob); 
+  const saldoAtualBanco = isAgosto ? 97743.09 : (saldoInicialBanco + totalGeralEntradas - totalGeralSaidas - 1488.50 + totalTransferidoParaSicoob);
   const saldoFinalTotal = saldoAtualBanco + saldoAtualCaixa; 
 
   const totaisCategorias: { [key: string]: { total: number; tipo: string } } = {};
@@ -147,35 +176,38 @@ export default function Dashboard() {
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg font-bold" />
       </div>
 
+      {/* 💳 CARDS DE SALDO REVISADOS COM CORES, COMPENSAÇÃO DE TRANSFERÊNCIAS E TOOLTIPS FIXADOS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
-        <div className="bg-white p-4 rounded-xl border relative">
-          <div className="absolute top-2 right-3 text-gray-400 cursor-pointer text-base" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
+        <div className="bg-white p-4 rounded-xl border shadow-sm relative">
+          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
             ⓘ
-            {/*  Código Corrigido com fundo escuro sólido */}
-{tooltipAtivo === 'caixa' && (
-  <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-xl pointer-events-none">
-    <p className="font-bold text-emerald-400 mb-1">📋 Resumo do Cálculo:</p>
-    <p className="text-zinc-300">Saldo Inicial: <span className="font-mono text-white">R$ {saldoInicialCaixa.toFixed(2)}</span></p>
-    <p className="text-zinc-300">{isAgosto ? "(+) Fechamento:" : "(+) Entradas Mês:"} <span className="font-mono text-white">R$ 1.488,50</span></p>
-    <div className="border-t border-zinc-700 my-1.5"></div>
-    <p className="font-bold text-zinc-100">(=) Atual: <span className="font-mono text-emerald-400">R$ {saldoAtualCaixa.toFixed(2)}</span></p>
-  </div>
-)}
+            {tooltipAtivo === 'caixa' && (
+              <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
+                <p className="font-bold text-emerald-400 mb-1">📋 Resumo do Cálculo:</p>
+                <p className="text-zinc-300">Saldo Inicial: <span className="font-mono text-white">R$ {saldoInicialCaixa.toFixed(2)}</span></p>
+                <p className="text-zinc-300">{isAgosto ? "(+) Fechamento:" : "(+) Entradas Mês:"} <span className="font-mono text-white">R$ 1.488,50</span></p>
+                <p className="text-rose-400 font-medium">(-) Depósito no Sicoob: <span className="font-mono">R$ {totalTransferidoParaSicoob.toFixed(2)}</span></p>
+                <div className="border-t border-zinc-700 my-1.5"></div>
+                <p className="font-bold text-zinc-100">(=) Atual: <span className="font-mono text-emerald-400">R$ {saldoAtualCaixa.toFixed(2)}</span></p>
+              </div>
+            )}
           </div>
           <p className="text-xs text-gray-400 uppercase">Caixa Físico</p>
           <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialCaixa.toFixed(2)}</p>
           <p className="text-xl text-emerald-600 mt-1">Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border relative">
-          <div className="absolute top-2 right-3 text-gray-400 cursor-pointer text-base" onMouseEnter={() => setTooltipAtivo('sicoob')} onMouseLeave={() => setTooltipAtivo(null)}>
+        <div className="bg-white p-4 rounded-xl border shadow-sm relative">
+          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('sicoob')} onMouseLeave={() => setTooltipAtivo(null)}>
             ⓘ
             {tooltipAtivo === 'sicoob' && (
-              <div className="absolute right-0 top-6 bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
-                <p className="font-bold text-blue-400">📋 Resumo do Cálculo:</p>
-                <p>Saldo Inicial: R$ {saldoInicialBanco.toFixed(2)}</p>
-                <p>(-) Dedução Caixa: R$ 6.894,56</p>
-                <p className="font-bold border-t border-gray-700 mt-1">(=) Atual: R$ {saldoAtualBanco.toFixed(2)}</p>
+              <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
+                <p className="font-bold text-blue-400 mb-1">📋 Resumo do Cálculo:</p>
+                <p className="text-zinc-300">Saldo Inicial: <span className="font-mono text-white">R$ {saldoInicialBanco.toFixed(2)}</span></p>
+                <p className="text-zinc-300">(-) Dedução Caixa: <span className="font-mono text-white">R$ 6.894,56</span></p>
+                <p className="text-emerald-400 font-medium">(+) Depósitos s/ Caixa: <span className="font-mono">R$ {totalTransferidoParaSicoob.toFixed(2)}</span></p>
+                <div className="border-t border-zinc-700 my-1.5"></div>
+                <p className="font-bold text-zinc-100">(=) Atual: <span className="font-mono text-blue-400">R$ {saldoAtualBanco.toFixed(2)}</span></p>
               </div>
             )}
           </div>
@@ -185,14 +217,16 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white p-4 rounded-xl border bg-gradient-to-br from-gray-50 to-gray-100 relative">
-          <div className="absolute top-2 right-3 text-gray-400 cursor-pointer text-base" onMouseEnter={() => setTooltipAtivo('total')} onMouseLeave={() => setTooltipAtivo(null)}>
+          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('total')} onMouseLeave={() => setTooltipAtivo(null)}>
             ⓘ
             {tooltipAtivo === 'total' && (
-              <div className="absolute right-0 top-6 bg-gray-900 text-white text-xs font-normal rounded-lg p-3 w-64 text-left border border-gray-700 z-50">
-                <p className="font-bold text-amber-400">📋 Resumo do Cálculo:</p>
-                <p>(+) Caixa Físico: R$ {saldoAtualCaixa.toFixed(2)}</p>
-                <p>(+) Sicoob: R$ {saldoAtualBanco.toFixed(2)}</p>
-                <p className="font-bold border-t border-gray-700 mt-1">(=) Total: R$ {saldoFinalTotal.toFixed(2)}</p>
+              <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
+                <p className="font-bold text-amber-400 mb-1">📋 Resumo do Cálculo:</p>
+                <p className="text-zinc-400">Unificação das realidades financeiras atuais:</p>
+                <p className="text-zinc-300">(+) Caixa Físico: <span className="font-mono text-emerald-400">R$ {saldoAtualCaixa.toFixed(2)}</span></p>
+                <p className="text-zinc-300">(+) Banco Sicoob: <span className="font-mono text-blue-400">R$ {saldoAtualBanco.toFixed(2)}</span></p>
+                <div className="border-t border-zinc-700 my-1.5"></div>
+                <p className="font-bold text-zinc-100">(=) Total: <span className="font-mono text-amber-400">R$ {saldoFinalTotal.toFixed(2)}</span></p>
               </div>
             )}
           </div>
@@ -212,22 +246,6 @@ export default function Dashboard() {
           <p className="text-2xl text-rose-600">- R$ {totalGeralSaidas.toFixed(2)}</p>
         </div>
       </div>
-
-      {(() => {
-        const isDeficit = totalGeralSaidas > totalGeralEntradas;
-        const pct = totalGeralEntradas > 0 ? ((totalGeralSaidas / totalGeralEntradas) * 100).toFixed(0) : "0";
-        return (
-          <div className="bg-white p-6 rounded-xl border print:hidden">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-500 uppercase">📊 Proporção do Orçamento</h3>
-              <span className={`text-xs font-bold ${isDeficit ? 'text-rose-600' : 'text-gray-500'}`}>Uso: {pct}%</span>
-            </div>
-            <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden mt-2">
-              <div className={`h-full transition-all duration-500 ${isDeficit ? 'bg-rose-500' : Number(pct) > 70 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(Number(pct), 100)}%` }}></div>
-            </div>
-          </div>
-        );
-      })()}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-xl border">
@@ -264,53 +282,35 @@ export default function Dashboard() {
             {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
           <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição" className="border p-2 rounded-lg" />
-          <input type="number" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} placeholder="0.00" className="border p-2 rounded-lg" />
+          <input type="text" value={valor} onChange={(e) => setValor(formatarMoeda(e.target.value))} placeholder="R$ 0,00" className="border p-2 rounded-lg font-mono font-bold" />
           <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="border p-2 rounded-lg" />
           {tipo === 'SAIDA' && (
             <div className="flex flex-col">
               <input type="file" accept="image/*,application/pdf" onChange={(e) => setArquivo(e.target.files?.[0] || null)} className="w-full border p-1 rounded-lg text-xs bg-gray-50" />
             </div>
           )}
-          <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg">{salvando ? '...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
+          <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg hover:bg-blue-700 transition">{salvando ? '...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
         </form>
       </div>
 
       <div className="bg-white p-6 rounded-xl border overflow-x-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
-                    {/* Substitua o bloco de botões (por volta da linha 315) por este completo: */}
           <div className="flex bg-gray-100 p-1 rounded-lg border text-xs font-bold text-gray-600">
-            <button 
-              type="button" 
-              onClick={() => setFiltroTipo('TODOS')} 
-              className={`px-3 py-1.5 rounded-md ${filtroTipo === 'TODOS' ? 'bg-white shadow-sm text-gray-800' : ''}`}
-            >
-              Todos
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setFiltroTipo('ENTRADA')} 
-              className={`px-3 py-1.5 rounded-md ${filtroTipo === 'ENTRADA' ? 'bg-emerald-600 text-white shadow-sm' : ''}`}
-            >
-              Entradas
-            </button>
-            <button 
-              type="button" 
-              onClick={() => setFiltroTipo('SAIDA')} 
-              className={`px-3 py-1.5 rounded-md ${filtroTipo === 'SAIDA' ? 'bg-rose-600 text-white shadow-sm' : ''}`}
-            >
-              Saídas
-            </button>
+            <button type="button" onClick={() => setFiltroTipo('TODOS')} className={`px-3 py-1.5 rounded-md ${filtroTipo === 'TODOS' ? 'bg-white shadow-sm text-gray-800' : ''}`}>Todos</button>
+            <button type="button" onClick={() => setFiltroTipo('ENTRADA')} className={`px-3 py-1.5 rounded-md ${filtroTipo === 'ENTRADA' ? 'bg-emerald-600 text-white shadow-sm' : ''}`}>Entradas</button>
+            <button type="button" onClick={() => setFiltroTipo('SAIDA')} className={`px-3 py-1.5 rounded-md ${filtroTipo === 'SAIDA' ? 'bg-rose-600 text-white shadow-sm' : ''}`}>Saídas</button>
           </div>
-          <button onClick={() => window.print()} className="bg-gray-800 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition hover:bg-gray-900">🖨️ Imprimir</button>
+          <button onClick={() => window.print()} className="bg-gray-800 text-white font-bold py-1.5 px-4 rounded-lg text-sm transition hover:bg-gray-900">🖨️ Imprimir Relatório Mensal</button>
         </div>
         
         <div className="mb-4 print:hidden">
-          <input type="text" value={buscaTexto} onChange={(e) => setBuscaTexto(e.target.value)} placeholder="🔍 Procurar..." className="w-full border p-2 rounded-lg bg-gray-50 text-sm focus:outline-none" />
+          <input type="text" value={buscaTexto} onChange={(e) => setBuscaTexto(e.target.value)} placeholder="🔍 Procurar por dízimos, ofertas ou despesas..." className="w-full border p-2 rounded-lg bg-gray-50 text-sm focus:outline-none" />
         </div>
 
-        <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
-        
+        <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block text-center border-b pb-2">
+          📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito
+        </h2>
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
@@ -324,18 +324,19 @@ export default function Dashboard() {
           </thead>
           <tbody className="divide-y text-sm text-gray-600">
             {transacoesFiltradas.map((t) => (
-              <tr key={t.id} className="hover:bg-gray-50">
+              <tr key={t.id} className="hover:bg-gray-50 print:hover:bg-transparent">
                 <td className="py-3 whitespace-nowrap">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
                 <td className="py-3 font-bold text-gray-800 pr-2">{t.descricao}</td>
                 <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
                 <td className="py-3 text-center">
                   {t.url_comprovante ? (
-                    <a href={t.url_comprovante} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline">📄 Ver</a>
+                    <a href={t.url_comprovante} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline print:hidden">📄 Ver</a>
                   ) : (
                     <span className="text-gray-300 text-xs italic">-</span>
                   )}
+                  <span className="hidden print:inline text-xs text-gray-400">{t.url_comprovante ? 'Sim' : 'Não'}</span>
                 </td>
-                <td className={`py-3 text-right font-bold whitespace-nowrap ${t.tipo === 'ENTRADA' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                <td className="py-3 text-right font-bold whitespace-nowrap text-gray-700">
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
                 <td className="py-3 text-center print:hidden">
@@ -354,6 +355,15 @@ export default function Dashboard() {
           </tbody>
         </table>
       </div>
+
+      {/* Estilo Global Injetado estritamente para ajustar a folha no papel de impressão */}
+      <style jsx global>{`
+        @media print {
+          body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
+          .max-w-7xl { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+          th, td { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 11px !important; }
+        }
+      `}</style>
     </div>
   );
 }
