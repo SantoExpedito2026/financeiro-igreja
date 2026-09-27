@@ -85,34 +85,80 @@ export default function Dashboard() {
     return parseFloat(limpo) || 0;
   }
 
-  async function handleSalvar(e: React.FormEvent) {
-    e.preventDefault();
-    if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
-    setSalvando(true);
-    let urlComprovante = null;
+ async function handleSalvar(e: React.FormEvent) {
+  e.preventDefault();
+  if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
+  setSalvando(true);
+  
+  let urlComprovante = null;
+  let enviouNovoArquivo = false;
 
-    if (arquivo && tipo === 'SAIDA') {
-      const nomeArquivo = `${Date.now()}_${arquivo.name}`;
-      const { error: upErr } = await supabase.storage.from('comprovantes').upload(nomeArquivo, arquivo);
-      if (upErr) { setSalvando(false); return alert('Erro no upload.'); }
-      urlComprovante = supabase.storage.from('comprovantes').getPublicUrl(nomeArquivo).data.publicUrl;
-    }
-
-    const valorNumericoReal = converterMoedaParaFloat(valor);
-
-    const dados = { descricao, valor: valorNumericoReal, tipo, category_id: parseInt(categoriaId), conta_id: parseInt(contaId), forma_pagamento: formaPagamento, data_transacao: dataTransacao, status: 'CONCRETIZADO', url_comprovante: urlComprovante };
-    const { error } = editandoId ? await supabase.from('transacoes').update([dados]).eq('id', editandoId) : await supabase.from('transacoes').insert([dados]);
-    setSalvando(false);
-    if (error) alert('Erro ao salvar.');
-    else { setDescricao(''); setValor(''); setCategoriaId(''); setArquivo(null); setEditandoId(null); carregarDados(); }
+  if (arquivo && tipo === 'SAIDA') {
+    const nomeArquivo = `${Date.now()}_${arquivo.name}`;
+    const { error: upErr } = await supabase.storage.from('comprovantes').upload(nomeArquivo, arquivo);
+    if (upErr) { setSalvando(false); return alert('Erro no upload.'); }
+    urlComprovante = supabase.storage.from('comprovantes').getPublicUrl(nomeArquivo).data.publicUrl;
+    enviouNovoArquivo = true;
   }
 
-  function iniciarEdicao(t: any) {
-    setEditandoId(t.id); setDescricao(t.descricao);
-    const valorFormatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.valor);
-    setValor(valorFormatado); setTipo(t.tipo);
-    setCategoriaId(t.category_id?.toString() || ''); setContaId(t.conta_id?.toString() || ''); setFormaPagamento(t.forma_pagamento); setDataTransacao(t.data_transacao);
+  const valorNumericoReal = converterMoedaParaFloat(valor);
+
+  // 1. Montamos as propriedades básicas comuns a inserções e edições
+  const dados: any = { 
+    descricao, 
+    valor: valorNumericoReal, 
+    tipo, 
+    categoria_id: parseInt(categoriaId, 10), 
+    conta_id: parseInt(contaId, 10), 
+    forma_pagamento: formaPagamento, 
+    data_transacao: dataTransacao, 
+    status: 'CONCRETIZADO'
+  };
+
+  // 2. Regra do comprovante: 
+  // Se for uma nova inserção, mandamos o valor (null ou link). 
+  // Se for edição, SÓ mandamos se o usuário tiver feito upload de um arquivo novo nesta sessão.
+  if (!editandoId) {
+    dados.url_comprovante = urlComprovante;
+  } else if (enviouNovoArquivo) {
+    dados.url_comprovante = urlComprovante;
   }
+
+  const { error } = editandoId 
+    ? await supabase.from('transacoes').update(dados).eq('id', editandoId) 
+    : await supabase.from('transacoes').insert([dados]);
+
+  setSalvando(false);
+  if (error) {
+    alert(`Erro ao salvar: ${error.message}`);
+  } else { 
+    setDescricao(''); 
+    setValor(''); 
+    setCategoriaId(''); 
+    setContaId('');
+    setArquivo(null); 
+    setEditandoId(null); 
+    carregarDados(); 
+  }
+}
+
+function iniciarEdicao(t: any) {
+  setEditandoId(t.id); 
+  setDescricao(t.descricao);
+  const valorFormatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.valor);
+  setValor(valorFormatado); 
+  setTipo(t.tipo);
+  
+  const catIdString = t.categoria_id?.toString() || t.category_id?.toString() || '';
+  const contaIdString = t.conta_id?.toString() || '';
+
+  setCategoriaId(catIdString); 
+  setContaId(contaIdString); 
+  setFormaPagamento(t.forma_pagamento || 'Dinheiro'); 
+  setDataTransacao(t.data_transacao);
+  // Limpa o estado do input de arquivo para não misturar uploads antigos com a nova edição
+  setArquivo(null);
+}
 
   async function handleDeletar(id: number) {
     if (!confirm('Excluir?')) return;
