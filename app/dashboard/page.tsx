@@ -1,7 +1,3 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
-
 export default function Dashboard() {
   const [transacoes, setTransacoes] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
@@ -9,6 +5,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [tooltipAtivo, setTooltipAtivo] = useState<string | null>(null);
   const [sessao, setSessao] = useState<any>(null);
+  
+  // Novo estado para controlar o perfil de acesso multiusuário
+  const [perfil, setPerfil] = useState<{ regra: 'ADMINISTRADOR' | 'TESOUREIRO' | 'LEITOR'; nome: string } | null>(null);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [autenticando, setAutenticando] = useState(false);
@@ -26,18 +26,22 @@ export default function Dashboard() {
   const [buscaTexto, setBuscaTexto] = useState('');
   const [editandoId, setEditandoId] = useState<number | null>(null);
 
+  // Monitora a sessão e dispara a busca de dados vinculada ao ID do usuário
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSessao(session);
-      if (session) carregarDados();
+      if (session) carregarDadosEPerfil(session.user.id);
       else setLoading(false);
     });
-    return supabase.auth.onAuthStateChange((_event, session) => {
-      setSessao(session);
-      if (session) carregarDados();
-    }).data.subscription.unsubscribe;
-  }, []);
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessao(session);
+      if (session) carregarDadosEPerfil(session.user.id);
+      else { setPerfil(null); setLoading(false); }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   // Monitora a escolha da categoria: se for transferência/depósito saindo do caixa físico, força a conta destino a ser o Sicoob (ID 2)
   useEffect(() => {
     const catSelecionada = categorias.find(c => c.id.toString() === categoriaId);
@@ -48,124 +52,128 @@ export default function Dashboard() {
     }
   }, [categoriaId, categorias]);
 
+  // Nova função para buscar os dados financeiros e o nível de acesso ao mesmo tempo
+  async function carregarDadosEPerfil(userId: string) {
+    setLoading(true);
+    try {
+      // 1. Busca o perfil de acesso do usuário logado na nova tabela
+      const { data: prof } = await supabase
+        .from('perfil_usuarios')
+        .select('regra, nome')
+        .eq('id', userId)
+        .single();
+      
+      if (prof) setPerfil(prof);
+
+      // 2. Carrega os dados financeiros idênticos ao que já tínhamos desenvolvido
+      const { data: t } = await supabase.from('transacoes').select('*, categorias(nome, tipo), contas(nome)').order('data_transacao', { ascending: true });
+      const { data: c } = await supabase.from('categorias').select('*').order('nome', { ascending: true });
+      const { data: co } = await supabase.from('contas').select('*');
+      
+      if (t) setTransacoes(t);
+      if (c) setCategorias(c);
+      if (co) setContas(co);
+    } catch (e) { 
+      console.error(e); 
+    } finally { 
+      setLoading(false); 
+    }
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     if (!email || !password) return alert('Preencha os campos!');
     setAutenticando(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setAutenticando(false);
-    if (error) alert('Erro ao acessar.');
+    if (error) alert(`Erro ao acessar: ${error.message}`);
   }
 
   async function handleLogout() {
     if (confirm('Sair?')) { setLoading(true); await supabase.auth.signOut(); }
   }
+  async function handleSalvar(e: React.FormEvent) {
+    e.preventDefault();
+    
+    // Trava de segurança: impede leitores de salvar ou alterar dados
+    if (perfil?.regra === 'LEITOR') {
+      return alert('Seu perfil atual não tem permissão para realizar ou alterar lançamentos.');
+    }
+    
+    if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
+    setSalvando(true);
+    
+    let urlComprovante = null;
+    let enviouNovoArquivo = false;
 
-  async function carregarDados() {
-    setLoading(true);
-    try {
-      const { data: t } = await supabase.from('transacoes').select('*, categorias(nome, tipo), contas(nome)').order('data_transacao', { ascending: true });
-      const { data: c } = await supabase.from('categorias').select('*').order('nome', { ascending: true });
-      const { data: co } = await supabase.from('contas').select('*');
-      if (t) setTransacoes(t);
-      if (c) setCategorias(c);
-      if (co) setContas(co);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+    if (arquivo && tipo === 'SAIDA') {
+      const nomeArquivo = `${Date.now()}_${arquivo.name}`;
+      const { error: upErr } = await supabase.storage.from('comprovantes').upload(nomeArquivo, arquivo);
+      if (upErr) { setSalvando(false); return alert('Erro no upload.'); }
+      urlComprovante = supabase.storage.from('comprovantes').getPublicUrl(nomeArquivo).data.publicUrl;
+      enviouNovoArquivo = true;
+    }
+
+    const valorNumericoReal = converterMoedaParaFloat(valor);
+
+    const dados: any = { 
+      descricao, 
+      valor: valorNumericoReal, 
+      tipo, 
+      categoria_id: parseInt(categoriaId, 10), 
+      conta_id: parseInt(contaId, 10), 
+      forma_pagamento: formaPagamento, 
+      data_transacao: dataTransacao, 
+      status: 'CONCRETIZADO'
+    };
+
+    if (!editandoId || enviouNovoArquivo) {
+      dados.url_comprovante = urlComprovante;
+    }
+
+    const { error } = editandoId 
+      ? await supabase.from('transacoes').update(dados).eq('id', editandoId) 
+      : await supabase.from('transacoes').insert([dados]);
+
+    setSalvando(false);
+    if (error) {
+      alert(`Erro ao salvar: ${error.message}`);
+    } else { 
+      setDescricao(''); setValor(''); setCategoriaId(''); setContaId(''); setArquivo(null); setEditandoId(null);
+      // Recarrega puxando o ID do usuário logado na sessão
+      if (sessao) carregarDadosEPerfil(sessao.user.id);
+    }
   }
 
-  function formatarMoeda(valorDigitado: string) {
-    const apenasNumeros = valorDigitado.replace(/\D/g, '');
-    if (!apenasNumeros) return '';
-    const valorDecimal = (Number(apenasNumeros) / 100).toFixed(2);
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valorDecimal));
+  function iniciarEdicao(t: any) {
+    // Bloqueia a abertura do editor caso seja leitor
+    if (perfil?.regra === 'LEITOR') return;
+    
+    setEditandoId(t.id); 
+    setDescricao(t.descricao);
+    const valorFormatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.valor);
+    setValor(valorFormatado); 
+    setTipo(t.tipo);
+    
+    const catIdString = t.categoria_id?.toString() || t.category_id?.toString() || '';
+    const contaIdString = t.conta_id?.toString() || '';
+
+    setCategoriaId(catIdString); 
+    setContaId(contaIdString); 
+    setFormaPagamento(t.forma_pagamento || 'Dinheiro'); 
+    setDataTransacao(t.data_transacao);
+    setArquivo(null);
   }
-
-  function converterMoedaParaFloat(valorFormatado: string) {
-    const limpo = valorFormatado.replace(/[^\d,]/g, '').replace(',', '.');
-    return parseFloat(limpo) || 0;
-  }
-
- async function handleSalvar(e: React.FormEvent) {
-  e.preventDefault();
-  if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
-  setSalvando(true);
-  
-  let urlComprovante = null;
-  let enviouNovoArquivo = false;
-
-  if (arquivo && tipo === 'SAIDA') {
-    const nomeArquivo = `${Date.now()}_${arquivo.name}`;
-    const { error: upErr } = await supabase.storage.from('comprovantes').upload(nomeArquivo, arquivo);
-    if (upErr) { setSalvando(false); return alert('Erro no upload.'); }
-    urlComprovante = supabase.storage.from('comprovantes').getPublicUrl(nomeArquivo).data.publicUrl;
-    enviouNovoArquivo = true;
-  }
-
-  const valorNumericoReal = converterMoedaParaFloat(valor);
-
-  // 1. Montamos as propriedades básicas comuns a inserções e edições
-  const dados: any = { 
-    descricao, 
-    valor: valorNumericoReal, 
-    tipo, 
-    categoria_id: parseInt(categoriaId, 10), 
-    conta_id: parseInt(contaId, 10), 
-    forma_pagamento: formaPagamento, 
-    data_transacao: dataTransacao, 
-    status: 'CONCRETIZADO'
-  };
-
-  // 2. Regra do comprovante: 
-  // Se for uma nova inserção, mandamos o valor (null ou link). 
-  // Se for edição, SÓ mandamos se o usuário tiver feito upload de um arquivo novo nesta sessão.
-  if (!editandoId) {
-    dados.url_comprovante = urlComprovante;
-  } else if (enviouNovoArquivo) {
-    dados.url_comprovante = urlComprovante;
-  }
-
-  const { error } = editandoId 
-    ? await supabase.from('transacoes').update(dados).eq('id', editandoId) 
-    : await supabase.from('transacoes').insert([dados]);
-
-  setSalvando(false);
-  if (error) {
-    alert(`Erro ao salvar: ${error.message}`);
-  } else { 
-    setDescricao(''); 
-    setValor(''); 
-    setCategoriaId(''); 
-    setContaId('');
-    setArquivo(null); 
-    setEditandoId(null); 
-    carregarDados(); 
-  }
-}
-
-function iniciarEdicao(t: any) {
-  setEditandoId(t.id); 
-  setDescricao(t.descricao);
-  const valorFormatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.valor);
-  setValor(valorFormatado); 
-  setTipo(t.tipo);
-  
-  const catIdString = t.categoria_id?.toString() || t.category_id?.toString() || '';
-  const contaIdString = t.conta_id?.toString() || '';
-
-  setCategoriaId(catIdString); 
-  setContaId(contaIdString); 
-  setFormaPagamento(t.forma_pagamento || 'Dinheiro'); 
-  setDataTransacao(t.data_transacao);
-  // Limpa o estado do input de arquivo para não misturar uploads antigos com a nova edição
-  setArquivo(null);
-}
 
   async function handleDeletar(id: number) {
-    if (!confirm('Excluir?')) return;
-    await supabase.from('transacoes').delete().eq('id', id); carregarDados();
+    // Trava de segurança para exclusão
+    if (perfil?.regra === 'LEITOR') return alert('Seu perfil não tem permissão para excluir registros.');
+    if (!confirm('Deseja realmente excluir este lançamento?')) return;
+    
+    await supabase.from('transacoes').delete().eq('id', id); 
+    if (sessao) carregarDadosEPerfil(sessao.user.id);
   }
-
-  if (loading) return <div className="p-8 text-center">Carregando...</div>;
+  if (loading) return <div className="p-8 text-center">Carregando permissões do painel...</div>;
   if (!sessao) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -209,18 +217,39 @@ function iniciarEdicao(t: any) {
   const saldoAtualBanco = isAgosto ? 97743.09 : (saldoInicialBanco + totalGeralEntradas - totalGeralSaidas - 1488.50 + totalTransferidoParaSicoob);
   const saldoFinalTotal = saldoAtualBanco + saldoAtualCaixa; 
 
-  const totaisCategorias: { [key: string]: { total: number; tipo: string } } = {};
-  transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
+   // Estrutura atualizada para calcular totais e porcentagens para os gráficos
+  const totaisCategorias: { [key: string]: { total: number; tipo: string; porcentagem: number } } = {};
+  
+  // Filtra as transações do mês selecionado
+  const transacoesDoMes = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro));
+
+  // 1. Calcula o valor somado bruto por categoria
+  transacoesDoMes.forEach(t => {
     const name = t.categorias?.nome || 'Sem categoria';
-    if (!totaisCategorias[name]) totaisCategorias[name] = { total: 0, tipo: t.tipo };
+    if (!totaisCategorias[name]) {
+      totaisCategorias[name] = { total: 0, tipo: t.tipo, porcentagem: 0 };
+    }
     totaisCategorias[name].total += Number(t.valor);
   });
+
+  // 2. Calcula o impacto percentual de cada categoria baseado no total global de Entradas ou Saídas
+  Object.keys(totaisCategorias).forEach(name => {
+    const cat = totaisCategorias[name];
+    const divisor = cat.tipo === 'ENTRADA' ? totalGeralEntradas : totalGeralSaidas;
+    cat.porcentagem = divisor > 0 ? (cat.total / divisor) * 100 : 0;
+  });
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
       <div className="border-b pb-4 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
-          <p className="text-gray-500 text-sm">Painel de Gestão e Fluxo de Caixa</p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-gray-500 text-sm">Painel de Gestão e Fluxo de Caixa</p>
+            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full uppercase">
+              {perfil?.regra || 'Buscando Perfil...'}
+            </span>
+          </div>
         </div>
         <button onClick={handleLogout} className="bg-rose-100 text-rose-600 font-bold py-2 px-4 rounded-lg text-sm">Sair</button>
       </div>
@@ -229,8 +258,7 @@ function iniciarEdicao(t: any) {
         <h3 className="text-sm font-bold text-gray-500 uppercase">Período de Referência</h3>
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg font-bold" />
       </div>
-
-      {/* 💳 CARDS DE SALDO REVISADOS COM CORES, COMPENSAÇÃO DE TRANSFERÊNCIAS E TOOLTIPS FIXADOS */}
+      {/* Cards de Saldo com Tooltips */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm relative">
           <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
@@ -301,58 +329,114 @@ function iniciarEdicao(t: any) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white p-5 rounded-xl border">
-          <h3 className="text-sm font-bold text-emerald-700 uppercase mb-3">💰 Entradas por Categoria</h3>
-          <div className="space-y-2 text-sm">
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'ENTRADA').map(([n, c]) => (
-              <div key={n} className="flex justify-between border-b pb-1"><span>{n}</span><span className="text-emerald-600 font-bold">R$ {c.total.toFixed(2)}</span></div>
-            ))}
+      {/* 📊 DASHBOARDS VISUAIS: ENTRADAS E SAÍDAS POR CATEGORIA */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Gráfico de Entradas */}
+        <div className="bg-white p-5 rounded-xl border shadow-sm">
+          <h3 className="text-sm font-bold text-emerald-700 uppercase mb-4 flex items-center gap-1.5">
+            📊 Distribuição de Receitas (Entradas)
+          </h3>
+          <div className="space-y-4">
+            {Object.entries(totaisCategorias)
+              .filter(([_, c]) => c.tipo === 'ENTRADA')
+              .sort((a, b) => b[1].total - a[1].total)
+              .map(([n, c]) => (
+                <div key={n} className="space-y-1">
+                  <div className="flex justify-between text-xs font-medium text-gray-600">
+                    <span className="font-bold text-gray-700">{n}</span>
+                    <span>
+                      R\$ {c.total.toFixed(2)} 
+                      <span className="text-emerald-600 font-bold ml-1.5">({c.porcentagem.toFixed(1)}%)</span>
+                    </span>
+                  </div>
+                  {/* Barra de Progresso Dinâmica */}
+                  <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${c.porcentagem}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            {Object.values(totaisCategorias).filter(c => c.tipo === 'ENTRADA').length === 0 && (
+              <p className="text-xs text-gray-400 text-center py-4">Nenhuma receita registrada neste período.</p>
+            )}
           </div>
         </div>
-        <div className="bg-white p-5 rounded-xl border">
-          <h3 className="text-sm font-bold text-rose-700 uppercase mb-3">💸 Saídas por Categoria</h3>
-          <div className="space-y-2 text-sm">
-            {Object.entries(totaisCategorias).filter(([_, c]) => c.tipo === 'SAIDA').map(([n, c]) => (
-              <div key={n} className="flex justify-between border-b pb-1"><span>{n}</span><span className="text-rose-600 font-bold">R$ {c.total.toFixed(2)}</span></div>
-            ))}
+
+        {/* Gráfico de Saídas */}
+        <div className="bg-white p-5 rounded-xl border shadow-sm">
+          <h3 className="text-sm font-bold text-rose-700 uppercase mb-4 flex items-center gap-1.5">
+            📊 Destinação de Recursos (Despesas)
+          </h3>
+          <div className="space-y-4">
+            {Object.entries(totaisCategorias)
+              .filter(([_, c]) => c.tipo === 'SAIDA')
+              .sort((a, b) => b[1].total - a[1].total)
+              .map(([n, c]) => (
+                <div key={n} className="space-y-1">
+                  <div className="flex justify-between text-xs font-medium text-gray-600">
+                    <span className="font-bold text-gray-700">{n}</span>
+                    <span>
+                      R\$ {c.total.toFixed(2)} 
+                      <span className="text-rose-600 font-bold ml-1.5">({c.porcentagem.toFixed(1)}%)</span>
+                    </span>
+                  </div>
+                  {/* Barra de Progresso Dinâmica */}
+                  <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-rose-500 h-full rounded-full transition-all duration-500" 
+                      style={{ width: `${c.porcentagem}%` }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            {Object.values(totaisCategorias).filter(c => c.tipo === 'SAIDA').length === 0 && (
+              <p className="text-xs text-gray-400 text-center py-4">Nenhuma despesa registrada neste período.</p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* FORMULÁRIO COM SELETOR DE CATEGORIAS DINÂMICO RESTAURADO */}
-      <div className="bg-white p-6 rounded-xl border print:hidden">
-        <h2 className="text-xl font-bold text-gray-700 mb-4">📝 Novo Lançamento</h2>
-        <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <select value={tipo} onChange={(e: any) => { setTipo(e.target.value); setCategoriaId(''); }} className="border p-2 rounded-lg bg-gray-50">
-            <option value="ENTRADA">ENTRADA (Receitas)</option>
-            <option value="SAIDA">SAIDA (Despesas)</option>
-          </select>
-          
-          {/* Seletor Corrigido: Mapeia e renderiza as categorias vindas do banco Supabase */}
-          <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="border p-2 rounded-lg bg-gray-50">
-            <option value="">Selecione a Categoria...</option>
-            {categorias.filter(c => c.tipo === tipo).map(c => (
-              <option key={c.id} value={c.id}>{c.nome}</option>
-            ))}
-          </select>
+      {/* Trava Visual do Formulário */}
+      {perfil?.regra !== 'LEITOR' ? (
+        <div className="bg-white p-6 rounded-xl border print:hidden">
+          <h2 className="text-xl font-bold text-gray-700 mb-4">
+            {editandoId ? '✏️ Editar Lançamento' : '📝 Novo Lançamento'}
+          </h2>
+          <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <select value={tipo} onChange={(e: any) => { setTipo(e.target.value); setCategoriaId(''); }} className="border p-2 rounded-lg bg-gray-50">
+              <option value="ENTRADA">ENTRADA (Receitas)</option>
+              <option value="SAIDA">SAIDA (Despesas)</option>
+            </select>
+            <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="border p-2 rounded-lg bg-gray-50">
+              <option value="">Selecione a Categoria...</option>
+              {categorias.filter(c => c.tipo === tipo).map(c => (
+                <option key={c.id} value={c.id}>{c.nome}</option>
+              ))}
+            </select>
+            <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="border p-2 rounded-lg bg-gray-50">
+              <option value="">Conta...</option>
+              {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+            <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição" className="border p-2 rounded-lg" />
+            <input type="text" value={valor} onChange={(e) => setValor(formatarMoeda(e.target.value))} placeholder="R$ 0,00" className="border p-2 rounded-lg font-mono font-bold" />
+            <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="border p-2 rounded-lg" />
+            {tipo === 'SAIDA' && (
+              <div className="flex flex-col">
+                <input type="file" accept="image/*,application/pdf" onChange={(e) => setArquivo(e.target.files?.[0] || null)} className="w-full border p-1 rounded-lg text-xs bg-gray-50 cursor-pointer" />
+              </div>
+            )}
+            <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg hover:bg-blue-700 transition">{salvando ? '...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
+          </form>
+        </div>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-xl text-sm font-medium print:hidden">
+          ℹ️ Seu perfil atual é de apenas <strong>Leitura</strong>. Você pode acompanhar as movimentações e emitir relatórios, mas não possui permissões para criar ou alterar registros financeiros.
+        </div>
+      )}
 
-          <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="border p-2 rounded-lg bg-gray-50">
-            <option value="">Conta...</option>
-            {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </select>
-          <input type="text" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição" className="border p-2 rounded-lg" />
-          <input type="text" value={valor} onChange={(e) => setValor(formatarMoeda(e.target.value))} placeholder="R$ 0,00" className="border p-2 rounded-lg font-mono font-bold" />
-          <input type="date" value={dataTransacao} onChange={(e) => setDataTransacao(e.target.value)} className="border p-2 rounded-lg" />
-          {tipo === 'SAIDA' && (
-            <div className="flex flex-col">
-              <input type="file" accept="image/*,application/pdf" onChange={(e) => setArquivo(e.target.files?.[0] || null)} className="w-full border p-1 rounded-lg text-xs bg-gray-50 cursor-pointer" />
-            </div>
-          )}
-          <button type="submit" disabled={salvando} className="bg-blue-600 text-white font-bold p-2 rounded-lg hover:bg-blue-700 transition">{salvando ? '...' : editandoId ? 'Atualizar' : 'Registrar'}</button>
-        </form>
-      </div>
-
+      {/* Lançamentos Recentes */}
       <div className="bg-white p-6 rounded-xl border overflow-x-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 print:hidden">
           <h2 className="text-xl font-bold text-gray-700">📋 Lançamentos Recentes</h2>
@@ -377,7 +461,7 @@ function iniciarEdicao(t: any) {
               <th className="pb-3 w-[23%]">Categoria</th>
               <th className="pb-3 text-center w-[10%]">Doc</th>
               <th className="pb-3 text-right w-[17%]">Valor</th>
-              <th className="pb-3 text-center print:hidden w-[10%]">Ações</th>
+              {perfil?.regra !== 'LEITOR' && <th className="pb-3 text-center print:hidden w-[10%]">Ações</th>}
             </tr>
           </thead>
           <tbody className="divide-y text-sm text-gray-600">
@@ -395,26 +479,27 @@ function iniciarEdicao(t: any) {
                   <span className="hidden print:inline text-xs text-gray-400">{t.url_comprovante ? 'Sim' : 'Não'}</span>
                 </td>
                 <td className="py-3 text-right font-bold whitespace-nowrap text-gray-700">
-                  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
+                  {t.tipo === 'ENTRADA' ? '+' : '-'} R\$ {Number(t.valor).toFixed(2)}
                 </td>
-                <td className="py-3 text-center print:hidden">
-                  <div className="flex items-center justify-center gap-1.5">
-                    <button type="button" onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 text-amber-700 font-bold py-1 px-2 rounded-lg transition" title="Editar">✏️</button>
-                    <button type="button" onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 text-rose-600 font-bold py-1 px-2 rounded-lg transition" title="Excluir">🗑️</button>
-                  </div>
-                </td>
+                {perfil?.regra !== 'LEITOR' && (
+                  <td className="py-3 text-center print:hidden">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <button type="button" onClick={() => iniciarEdicao(t)} className="text-xs bg-amber-100 text-amber-700 font-bold py-1 px-2 rounded-lg transition" title="Editar">✏️</button>
+                      <button type="button" onClick={() => handleDeletar(t.id)} className="text-xs bg-rose-100 text-rose-600 font-bold py-1 px-2 rounded-lg transition" title="Excluir">🗑️</button>
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
             {transacoesFiltradas.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado.</td>
+                <td colSpan={perfil?.regra !== 'LEITOR' ? 6 : 5} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Estilo Global Injetado estritamente para ajustar a folha no papel de impressão */}
       <style jsx global>{`
         @media print {
           body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
