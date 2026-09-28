@@ -505,15 +505,24 @@ export default function Dashboard() {
                 <td className="py-3 whitespace-nowrap">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
                 <td className="py-3 font-bold text-gray-800 pr-2">{t.descricao}</td>
                 <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
-                <td className="py-3 text-center">
+                                <td className="py-3 text-center">
                   {t.url_comprovante ? (
-                    <a href={t.url_comprovante} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline print:hidden">📄 Ver</a>
-                  ) : (
+                    <a 
+                      href={t.url_comprovante} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-blue-600 font-bold hover:underline print:hidden"
+                    >
+                      📄 Ver
+                    </a>
                   ) : (
                     <span className="text-gray-300 text-xs italic">-</span>
                   )}
-                  <span className="hidden print:inline text-xs text-gray-400">{t.url_comprovante ? 'Sim' : 'Não'}</span>
+                  <span className="hidden print:inline text-xs text-gray-400">
+                    {t.url_comprovante ? 'Sim' : 'Não'}
+                  </span>
                 </td>
+
                 <td className="py-3 text-right font-bold whitespace-nowrap text-gray-700">
                   {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
