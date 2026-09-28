@@ -1,3 +1,7 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+
 export default function Dashboard() {
   const [transacoes, setTransacoes] = useState<any[]>([]);
   const [categorias, setCategorias] = useState<any[]>([]);
@@ -6,7 +10,7 @@ export default function Dashboard() {
   const [tooltipAtivo, setTooltipAtivo] = useState<string | null>(null);
   const [sessao, setSessao] = useState<any>(null);
   
-  // 1. Estados de Controle de Perfil e do Modal flutuante administratório
+  // Estados de Controle de Perfil e do Modal flutuante administratório
   const [perfil, setPerfil] = useState<{ regra: 'ADMINISTRADOR' | 'TESOUREIRO' | 'LEITOR'; nome: string } | null>(null);
   const [modalUsuariosAberto, setModalUsuariosAberto] = useState(false);
   const [listaUsuarios, setListaUsuarios] = useState<any[]>([]);
@@ -55,8 +59,7 @@ export default function Dashboard() {
       if (!descricao) setDescricao('Transferência interna para o Sicoob');
     }
   }, [categoriaId, categorias]);
-
-  // 2. Funções Administrativas de Usuários (Corretamente isoladas no escopo do componente)
+  // Busca a lista de perfis cadastrados no sistema (Para o Administrador)
   async function carregarListaUsuarios() {
     const { data, error } = await supabase
       .from('perfil_usuarios')
@@ -67,6 +70,7 @@ export default function Dashboard() {
     if (error) console.error('Erro ao carregar usuários:', error.message);
   }
 
+  // Altera o nível de acesso (Regra) de um usuário específico
   async function handleAlterarRegraUsuario(id: string, novaRegra: 'ADMINISTRADOR' | 'TESOUREIRO' | 'LEITOR') {
     setSalvandoUsuarioId(id);
     const { error } = await supabase
@@ -75,13 +79,11 @@ export default function Dashboard() {
       .eq('id', id);
 
     setSalvandoUsuarioId(null);
-    if (error) {
-      alert(`Erro ao alterar permissão: ${error.message}`);
-    } else {
-      carregarListaUsuarios(); 
-    }
+    if (error) alert(`Erro ao alterar permissão: ${error.message}`);
+    else carregarListaUsuarios(); 
   }
 
+  // Remove o acesso do usuário do sistema
   async function handleRemoverAcessoUsuario(id: string, nomeUsuario: string) {
     if (!confirm(`Deseja realmente revogar e remover completamente o acesso de ${nomeUsuario}?`)) return;
     
@@ -92,15 +94,11 @@ export default function Dashboard() {
       .eq('id', id);
 
     setSalvandoUsuarioId(null);
-    if (error) {
-      alert(`Erro ao remover acesso: ${error.message}`);
-    } else {
-      alert('Acesso removido com sucesso!');
-      carregarListaUsuarios();
-    }
+    if (error) alert(`Erro ao remover acesso: ${error.message}`);
+    else { alert('Acesso removido com sucesso!'); carregarListaUsuarios(); }
   }
 
-  // Função para buscar os dados financeiros e o nível de acesso em tempo real
+  // Busca os dados financeiros e o nível de acesso em tempo real
   async function carregarDadosEPerfil(userId: string) {
     setLoading(true);
     try {
@@ -118,7 +116,7 @@ export default function Dashboard() {
       }
 
       const { data: t } = await supabase.from('transacoes').select('*, categorias(nome, tipo), contas(nome)').order('data_transacao', { ascending: true });
-      const { data: c } = await supabase.from('categorias').select('*').order('nome', { ascending: true });
+      const { data: c = [] } = await supabase.from('categorias').select('*').order('nome', { ascending: true }) || {};
       const { data: co } = await supabase.from('contas').select('*');
       
       if (t) setTransacoes(t);
@@ -143,14 +141,22 @@ export default function Dashboard() {
   async function handleLogout() {
     if (confirm('Sair?')) { setLoading(true); await supabase.auth.signOut(); }
   }
+
+  function formatarMoeda(valorDigitado: string) {
+    const apenasNumeros = valorDigitado.replace(/\D/g, '');
+    if (!apenasNumeros) return '';
+    const valorDecimal = (Number(apenasNumeros) / 100).toFixed(2);
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valorDecimal));
+  }
+
+  function converterMoedaParaFloat(valorFormatado: string) {
+    const limpo = valorFormatado.replace(/[^\d,]/g, '').replace(',', '.');
+    return parseFloat(limpo) || 0;
+  }
+
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
-    
-    // Trava de segurança: impede leitores de salvar ou alterar dados
-    if (perfil?.regra === 'LEITOR') {
-      return alert('Seu perfil atual não tem permissão para realizar ou alterar lançamentos.');
-    }
-    
+    if (perfil?.regra === 'LEITOR') return alert('Seu perfil atual não tem permissão para realizar ou alterar lançamentos.');
     if (!descricao || !valor || !categoriaId || !contaId) return alert('Preencha os campos obrigatórios!');
     setSalvando(true);
     
@@ -166,61 +172,39 @@ export default function Dashboard() {
     }
 
     const valorNumericoReal = converterMoedaParaFloat(valor);
-
     const dados: any = { 
-      descricao, 
-      valor: valorNumericoReal, 
-      tipo, 
-      categoria_id: parseInt(categoriaId, 10), 
-      conta_id: parseInt(contaId, 10), 
-      forma_pagamento: formaPagamento, 
-      data_transacao: dataTransacao, 
-      status: 'CONCRETIZADO'
+      descricao, valor: valorNumericoReal, tipo, 
+      categoria_id: parseInt(categoriaId, 10), conta_id: parseInt(contaId, 10), 
+      forma_pagamento: formaPagamento, data_transacao: dataTransacao, status: 'CONCRETIZADO'
     };
 
-    if (!editandoId || enviouNovoArquivo) {
-      dados.url_comprovante = urlComprovante;
-    }
+    if (!editandoId || enviouNovoArquivo) dados.url_comprovante = urlComprovante;
 
     const { error } = editandoId 
       ? await supabase.from('transacoes').update(dados).eq('id', editandoId) 
       : await supabase.from('transacoes').insert([dados]);
 
     setSalvando(false);
-    if (error) {
-      alert(`Erro ao salvar: ${error.message}`);
-    } else { 
+    if (error) alert(`Erro ao salvar: ${error.message}`);
+    else { 
       setDescricao(''); setValor(''); setCategoriaId(''); setContaId(''); setArquivo(null); setEditandoId(null);
-      // Recarrega puxando o ID do usuário logado na sessão
       if (sessao) carregarDadosEPerfil(sessao.user.id);
     }
   }
 
   function iniciarEdicao(t: any) {
-    // Bloqueia a abertura do editor caso seja leitor
     if (perfil?.regra === 'LEITOR') return;
-    
-    setEditandoId(t.id); 
-    setDescricao(t.descricao);
+    setEditandoId(t.id); setDescricao(t.descricao);
     const valorFormatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(t.valor);
-    setValor(valorFormatado); 
-    setTipo(t.tipo);
-    
-    const catIdString = t.categoria_id?.toString() || t.category_id?.toString() || '';
-    const contaIdString = t.conta_id?.toString() || '';
-
-    setCategoriaId(catIdString); 
-    setContaId(contaIdString); 
-    setFormaPagamento(t.forma_pagamento || 'Dinheiro'); 
-    setDataTransacao(t.data_transacao);
+    setValor(valorFormatado); setTipo(t.tipo);
+    setCategoriaId(t.categoria_id?.toString() || t.category_id?.toString() || ''); 
+    setContaId(t.conta_id?.toString() || ''); setFormaPagamento(t.forma_pagamento || 'Dinheiro'); setDataTransacao(t.data_transacao);
     setArquivo(null);
   }
 
   async function handleDeletar(id: number) {
-    // Trava de segurança para exclusão
     if (perfil?.regra === 'LEITOR') return alert('Seu perfil não tem permissão para excluir registros.');
     if (!confirm('Deseja realmente excluir este lançamento?')) return;
-    
     await supabase.from('transacoes').delete().eq('id', id); 
     if (sessao) carregarDadosEPerfil(sessao.user.id);
   }
@@ -268,13 +252,9 @@ export default function Dashboard() {
   const saldoAtualBanco = isAgosto ? 97743.09 : (saldoInicialBanco + totalGeralEntradas - totalGeralSaidas - 1488.50 + totalTransferidoParaSicoob);
   const saldoFinalTotal = saldoAtualBanco + saldoAtualCaixa; 
 
-   // Estrutura atualizada para calcular totais e porcentagens para os gráficos
   const totaisCategorias: { [key: string]: { total: number; tipo: string; porcentagem: number } } = {};
-  
-  // Filtra as transações do mês selecionado
   const transacoesDoMes = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro));
 
-  // 1. Calcula o valor somado bruto por categoria
   transacoesDoMes.forEach(t => {
     const name = t.categorias?.nome || 'Sem categoria';
     if (!totaisCategorias[name]) {
@@ -283,7 +263,6 @@ export default function Dashboard() {
     totaisCategorias[name].total += Number(t.valor);
   });
 
-  // 2. Calcula o impacto percentual de cada categoria baseado no total global de Entradas ou Saídas
   Object.keys(totaisCategorias).forEach(name => {
     const cat = totaisCategorias[name];
     const divisor = cat.tipo === 'ENTRADA' ? totalGeralEntradas : totalGeralSaidas;
@@ -291,8 +270,8 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
-            <div className="border-b pb-4 flex items-center justify-between gap-4">
+    <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans print:bg-white print:text-black print:p-0">
+      <div className="border-b pb-4 flex items-center justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
           <div className="flex items-center gap-2 mt-1">
@@ -303,7 +282,6 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* Botão de engrenagem visível unicamente para Administradores */}
           {perfil?.regra === 'ADMINISTRADOR' && (
             <button 
               onClick={() => { carregarListaUsuarios(); setModalUsuariosAberto(true); }} 
@@ -317,14 +295,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-4 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-4 print:hidden">
         <h3 className="text-sm font-bold text-gray-500 uppercase">Período de Referência</h3>
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg font-bold" />
       </div>
-      {/* Cards de Saldo com Tooltips */}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm relative">
-          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
+          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30 print:hidden" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
             ⓘ
             {tooltipAtivo === 'caixa' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
@@ -343,7 +321,7 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white p-4 rounded-xl border shadow-sm relative">
-          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('sicoob')} onMouseLeave={() => setTooltipAtivo(null)}>
+          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30 print:hidden" onMouseEnter={() => setTooltipAtivo('sicoob')} onMouseLeave={() => setTooltipAtivo(null)}>
             ⓘ
             {tooltipAtivo === 'sicoob' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
@@ -362,7 +340,7 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-white p-4 rounded-xl border bg-gradient-to-br from-gray-50 to-gray-100 relative">
-          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30" onMouseEnter={() => setTooltipAtivo('total')} onMouseLeave={() => setTooltipAtivo(null)}>
+          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30 print:hidden" onMouseEnter={() => setTooltipAtivo('total')} onMouseLeave={() => setTooltipAtivo(null)}>
             ⓘ
             {tooltipAtivo === 'total' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
@@ -408,16 +386,13 @@ export default function Dashboard() {
                   <div className="flex justify-between text-xs font-medium text-gray-600">
                     <span className="font-bold text-gray-700">{n}</span>
                     <span>
-                      R\$ {c.total.toFixed(2)} 
+                      R$ {c.total.toFixed(2)} 
                       <span className="text-emerald-600 font-bold ml-1.5">({c.porcentagem.toFixed(1)}%)</span>
                     </span>
                   </div>
                   {/* Barra de Progresso Dinâmica */}
                   <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${c.porcentagem}%` }}
-                    ></div>
+                    <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${c.porcentagem}%` }}></div>
                   </div>
                 </div>
               ))}
@@ -441,16 +416,13 @@ export default function Dashboard() {
                   <div className="flex justify-between text-xs font-medium text-gray-600">
                     <span className="font-bold text-gray-700">{n}</span>
                     <span>
-                      R\$ {c.total.toFixed(2)} 
+                      R$ {c.total.toFixed(2)} 
                       <span className="text-rose-600 font-bold ml-1.5">({c.porcentagem.toFixed(1)}%)</span>
                     </span>
                   </div>
                   {/* Barra de Progresso Dinâmica */}
                   <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-rose-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${c.porcentagem}%` }}
-                    ></div>
+                    <div className="bg-rose-500 h-full rounded-full transition-all duration-500" style={{ width: `${c.porcentagem}%` }}></div>
                   </div>
                 </div>
               ))}
@@ -461,7 +433,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-           {/* Trava Visual do Formulário */}
+      {/* Trava Visual do Formulário */}
       {perfil?.regra !== 'LEITOR' ? (
         <div className="bg-white p-6 rounded-xl border print:hidden">
           <h2 className="text-xl font-bold text-gray-700 mb-4">
@@ -537,12 +509,13 @@ export default function Dashboard() {
                   {t.url_comprovante ? (
                     <a href={t.url_comprovante} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold hover:underline print:hidden">📄 Ver</a>
                   ) : (
+                  ) : (
                     <span className="text-gray-300 text-xs italic">-</span>
                   )}
                   <span className="hidden print:inline text-xs text-gray-400">{t.url_comprovante ? 'Sim' : 'Não'}</span>
                 </td>
                 <td className="py-3 text-right font-bold whitespace-nowrap text-gray-700">
-                  {t.tipo === 'ENTRADA' ? '+' : '-'} R\$ {Number(t.valor).toFixed(2)}
+                  {t.tipo === 'ENTRADA' ? '+' : '-'} R$ {Number(t.valor).toFixed(2)}
                 </td>
                 {perfil?.regra !== 'LEITOR' && (
                   <td className="py-3 text-center print:hidden">
@@ -565,10 +538,8 @@ export default function Dashboard() {
 
       {/* 🔐 PAINEL FLUTUANTE (MODAL): GESTÃO DE PERFIS E REVOGAÇÃO DE ACESSOS */}
       {modalUsuariosAberto && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm print:hidden">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col border overflow-hidden">
-            
-            {/* Cabeçalho do Modal */}
             <div className="p-5 border-b flex items-center justify-between bg-gray-50">
               <div>
                 <h3 className="text-lg font-bold text-gray-800">🔐 Controle de Usuários e Permissões</h3>
@@ -577,7 +548,6 @@ export default function Dashboard() {
               <button onClick={() => setModalUsuariosAberto(false)} className="text-gray-400 hover:text-gray-600 text-xl font-mono">×</button>
             </div>
 
-            {/* Listagem de Usuários */}
             <div className="p-6 overflow-y-auto space-y-4 flex-1">
               <div className="divide-y">
                 {listaUsuarios.map((u) => (
@@ -609,38 +579,21 @@ export default function Dashboard() {
                       </button>
                     </div>
                   </div>
-
                 ))}
-
                 {listaUsuarios.length === 0 && (
                   <p className="text-sm text-gray-400 text-center py-6">Nenhum outro perfil mapeado na tabela.</p>
                 )}
               </div>
             </div>
 
-            {/* Rodapé do Modal */}
             <div className="p-4 border-t bg-gray-50 flex justify-end">
-              <button 
-                onClick={() => setModalUsuariosAberto(false)} 
-                className="bg-gray-800 text-white font-bold text-xs px-4 py-2 rounded-lg transition hover:bg-gray-900"
-              >
+              <button onClick={() => setModalUsuariosAberto(false)} className="bg-gray-800 text-white font-bold text-xs px-4 py-2 rounded-lg transition hover:bg-gray-900">
                 Concluir e Fechar
               </button>
             </div>
-
           </div>
         </div>
       )}
-    
- </div>
-
-      <style jsx global>{`
-        @media print {
-          body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
-          .max-w-7xl { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
-          th, td { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 11px !important; }
-        }
-      `}</style>
     </div>
   );
 }
