@@ -6,8 +6,11 @@ export default function Dashboard() {
   const [tooltipAtivo, setTooltipAtivo] = useState<string | null>(null);
   const [sessao, setSessao] = useState<any>(null);
   
-  // Novo estado para controlar o perfil de acesso multiusuário
+  // 1. Estados de Controle de Perfil e do Modal flutuante administratório
   const [perfil, setPerfil] = useState<{ regra: 'ADMINISTRADOR' | 'TESOUREIRO' | 'LEITOR'; nome: string } | null>(null);
+  const [modalUsuariosAberto, setModalUsuariosAberto] = useState(false);
+  const [listaUsuarios, setListaUsuarios] = useState<any[]>([]);
+  const [salvandoUsuarioId, setSalvandoUsuarioId] = useState<string | null>(null);
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,7 +29,7 @@ export default function Dashboard() {
   const [buscaTexto, setBuscaTexto] = useState('');
   const [editandoId, setEditandoId] = useState<number | null>(null);
 
-  // Monitora a sessão e dispara a busca de dados vinculada ao ID do usuário
+  // Monitora a sessão e dispara a busca de dados
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSessao(session);
@@ -42,21 +45,65 @@ export default function Dashboard() {
 
     return () => subscription.unsubscribe();
   }, []);
-  // Monitora a escolha da categoria: se for transferência/depósito saindo do caixa físico, força a conta destino a ser o Sicoob (ID 2)
+
+  // Monitora a escolha da categoria para automação do Sicoob
   useEffect(() => {
     const catSelecionada = categorias.find(c => c.id.toString() === categoriaId);
     const nomeCat = catSelecionada?.nome?.toLowerCase() || '';
     if (nomeCat.includes('transferência') || nomeCat.includes('depósito')) {
-      setContaId('2'); // ID fixo correspondente às Contas Bancárias (Sicoob)
+      setContaId('2'); 
       if (!descricao) setDescricao('Transferência interna para o Sicoob');
     }
   }, [categoriaId, categorias]);
 
-  // Nova função para buscar os dados financeiros e o nível de acesso ao mesmo tempo
+  // 2. Funções Administrativas de Usuários (Corretamente isoladas no escopo do componente)
+  async function carregarListaUsuarios() {
+    const { data, error } = await supabase
+      .from('perfil_usuarios')
+      .select('*')
+      .order('nome', { ascending: true });
+    
+    if (data) setListaUsuarios(data);
+    if (error) console.error('Erro ao carregar usuários:', error.message);
+  }
+
+  async function handleAlterarRegraUsuario(id: string, novaRegra: 'ADMINISTRADOR' | 'TESOUREIRO' | 'LEITOR') {
+    setSalvandoUsuarioId(id);
+    const { error } = await supabase
+      .from('perfil_usuarios')
+      .update({ regra: novaRegra })
+      .eq('id', id);
+
+    setSalvandoUsuarioId(null);
+    if (error) {
+      alert(`Erro ao alterar permissão: ${error.message}`);
+    } else {
+      carregarListaUsuarios(); 
+    }
+  }
+
+  async function handleRemoverAcessoUsuario(id: string, nomeUsuario: string) {
+    if (!confirm(`Deseja realmente revogar e remover completamente o acesso de ${nomeUsuario}?`)) return;
+    
+    setSalvandoUsuarioId(id);
+    const { error } = await supabase
+      .from('perfil_usuarios')
+      .delete()
+      .eq('id', id);
+
+    setSalvandoUsuarioId(null);
+    if (error) {
+      alert(`Erro ao remover acesso: ${error.message}`);
+    } else {
+      alert('Acesso removido com sucesso!');
+      carregarListaUsuarios();
+    }
+  }
+
+  // Função para buscar os dados financeiros e o nível de acesso em tempo real
   async function carregarDadosEPerfil(userId: string) {
     setLoading(true);
     try {
-      // 1. Busca o perfil de acesso do usuário logado na nova tabela
       const { data: prof } = await supabase
         .from('perfil_usuarios')
         .select('regra, nome')
@@ -64,8 +111,12 @@ export default function Dashboard() {
         .single();
       
       if (prof) setPerfil(prof);
+      
+      if (prof?.regra === 'ADMINISTRADOR') {
+        const { data: usrs } = await supabase.from('perfil_usuarios').select('*').order('nome', { ascending: true });
+        if (usrs) setListaUsuarios(usrs);
+      }
 
-      // 2. Carrega os dados financeiros idênticos ao que já tínhamos desenvolvido
       const { data: t } = await supabase.from('transacoes').select('*, categorias(nome, tipo), contas(nome)').order('data_transacao', { ascending: true });
       const { data: c } = await supabase.from('categorias').select('*').order('nome', { ascending: true });
       const { data: co } = await supabase.from('contas').select('*');
@@ -241,7 +292,7 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans">
-      <div className="border-b pb-4 flex items-center justify-between gap-4">
+            <div className="border-b pb-4 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
           <div className="flex items-center gap-2 mt-1">
@@ -251,7 +302,19 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
-        <button onClick={handleLogout} className="bg-rose-100 text-rose-600 font-bold py-2 px-4 rounded-lg text-sm">Sair</button>
+        <div className="flex items-center gap-2">
+          {/* Botão de engrenagem visível unicamente para Administradores */}
+          {perfil?.regra === 'ADMINISTRADOR' && (
+            <button 
+              onClick={() => { carregarListaUsuarios(); setModalUsuariosAberto(true); }} 
+              className="bg-gray-100 text-gray-700 font-bold py-2 px-3.5 rounded-lg text-sm transition hover:bg-gray-200"
+              title="Gerenciar Acessos"
+            >
+              ⚙️ Usuários
+            </button>
+          )}
+          <button onClick={handleLogout} className="bg-rose-100 text-rose-600 font-bold py-2 px-4 rounded-lg text-sm">Sair</button>
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -398,7 +461,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Trava Visual do Formulário */}
+           {/* Trava Visual do Formulário */}
       {perfil?.regra !== 'LEITOR' ? (
         <div className="bg-white p-6 rounded-xl border print:hidden">
           <h2 className="text-xl font-bold text-gray-700 mb-4">
@@ -499,6 +562,77 @@ export default function Dashboard() {
           </tbody>
         </table>
       </div>
+
+      {/* 🔐 PAINEL FLUTUANTE (MODAL): GESTÃO DE PERFIS E REVOGAÇÃO DE ACESSOS */}
+      {modalUsuariosAberto && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col border overflow-hidden">
+            
+            {/* Cabeçalho do Modal */}
+            <div className="p-5 border-b flex items-center justify-between bg-gray-50">
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">🔐 Controle de Usuários e Permissões</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Defina quem pode lançar, editar ou apenas auditar os livros da igreja.</p>
+              </div>
+              <button onClick={() => setModalUsuariosAberto(false)} className="text-gray-400 hover:text-gray-600 text-xl font-mono">×</button>
+            </div>
+
+            {/* Listagem de Usuários */}
+            <div className="p-6 overflow-y-auto space-y-4 flex-1">
+              <div className="divide-y">
+                {listaUsuarios.map((u) => (
+                  <div key={u.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 first:pt-0 last:pb-0">
+                    <div>
+                      <p className="font-bold text-gray-800">{u.nome || 'Usuário Paroquial'}</p>
+                      <p className="text-xs text-gray-400 font-mono">{u.email}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={u.regra}
+                        disabled={salvandoUsuarioId === u.id}
+                        onChange={(e) => handleAlterarRegraUsuario(u.id, e.target.value as any)}
+                        className="border p-1.5 rounded-lg text-xs bg-gray-50 font-bold text-gray-700 outline-none"
+                      >
+                        <option value="ADMINISTRADOR">👑 ADMINISTRADOR</option>
+                        <option value="TESOUREIRO">💼 TESOUREIRO</option>
+                        <option value="LEITOR">👁️ LEITOR (Apenas Vista)</option>
+                      </select>
+
+                      <button
+                        type="button"
+                        disabled={salvandoUsuarioId === u.id}
+                        onClick={() => handleRemoverAcessoUsuario(u.id, u.nome || u.email)}
+                        className="bg-rose-50 text-rose-600 border border-rose-200 text-xs font-bold px-2.5 py-1.5 rounded-lg transition hover:bg-rose-100"
+                      >
+                        🗑️ Revogar
+                      </button>
+                    </div>
+                  </div>
+
+                ))}
+
+                {listaUsuarios.length === 0 && (
+                  <p className="text-sm text-gray-400 text-center py-6">Nenhum outro perfil mapeado na tabela.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Rodapé do Modal */}
+            <div className="p-4 border-t bg-gray-50 flex justify-end">
+              <button 
+                onClick={() => setModalUsuariosAberto(false)} 
+                className="bg-gray-800 text-white font-bold text-xs px-4 py-2 rounded-lg transition hover:bg-gray-900"
+              >
+                Concluir e Fechar
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+    
+ </div>
 
       <style jsx global>{`
         @media print {
