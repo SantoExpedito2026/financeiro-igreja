@@ -239,58 +239,75 @@ export default function Dashboard() {
   const isAgosto = mesFiltro === "2026-08";
     // ... CÓDIGO DO FORMULÁRIO DE LOGIN DEIXAR IGUAL
 
-  // Linha de base oficial vinda do fechamento do mês 08 (Agosto)
+    // Linha de base oficial paroquial herdada do fechamento do mês 08 (Agosto)
   const SALDO_INICIAL_CAIXA_REAL = 3146.95;
   const SALDO_INICIAL_BANCO_REAL = 97743.09;
 
-  // 1. Filtra as transações pertencentes estritamente ao mês que o usuário selecionou na tela
+  // 1. Filtra as transações pertencentes estritamente ao mês selecionado na tela
   const transacoesFiltradas = transacoes.filter(t => 
     t.data_transacao.startsWith(mesFiltro) && 
     t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase()) && 
     (filtroTipo === 'TODOS' ? true : t.tipo === filtroTipo)
   );
   
-  // 2. Variáveis para somar os lançamentos isolados do mês atual selecionado
+  // 2. Variáveis dinâmicas para acumular os meses passados e processar o período atual
+  let saldoAcumuladoCaixaAteMes = SALDO_INICIAL_CAIXA_REAL;
+  let saldoAcumuladoBancoAteMes = SALDO_INICIAL_BANCO_REAL;
+
   let totalEntradasCaixaMes = 0;
   let totalSaidasCaixaMes = 0;
   let totalEntradasBancoMes = 0;
   let totalSaidasBancoMes = 0;
 
+  // Varre a linha do tempo contábil de todas as transações
   transacoes.forEach(t => {
     const valorNum = Number(t.valor) || 0;
     const dataDoLancamento = t.data_transacao || '';
-
-    // Se o lançamento for anterior ao mês atual, ele acumula no saldo de abertura histórico
+    
     const ehMesAnterior = dataDoLancamento < `${mesFiltro}-01`;
-    // Se o lançamento for exatamente do mês selecionado, acumula nos totais do período
     const ehMesAtual = dataDoLancamento.startsWith(mesFiltro);
 
-    if (t.tipo === 'ENTRADA') {
-      if (t.conta_id === 1) {
-        if (ehMesAtual) totalEntradasCaixaMes += valorNum;
+    // Identifica de forma automatizada depósitos e transferências internas para o Sicoob
+    const nomeCategoria = t.categorias?.nome?.toLowerCase() || '';
+    const isTransferencia = nomeCategoria.includes('transferência') || nomeCategoria.includes('depósito');
+
+    if (ehMesAnterior) {
+      // --- REGRA DE ACUMULAÇÃO HISTÓRICA DE MESES PASSADOS ---
+      if (t.tipo === 'ENTRADA') {
+        if (t.conta_id === 1) saldoAcumuladoCaixaAteMes += valorNum;
+        else saldoAcumuladoBancoAteMes += valorNum;
       } else {
-        if (ehMesAtual) totalEntradasBancoMes += valorNum;
+        if (t.conta_id === 1) {
+          saldoAcumuladoCaixaAteMes -= valorNum;
+          if (isTransferencia) saldoAcumuladoBancoAteMes += valorNum;
+        } else {
+          saldoAcumuladoBancoAteMes -= valorNum;
+        }
       }
-    } else {
-      if (t.conta_id === 1) {
-        if (ehMesAtual) totalSaidasCaixaMes += valorNum;
+    } else if (ehMesAtual) {
+      // --- REGRA DE FLUXO DO MÊS SELECIONADO NA TELA ---
+      if (t.tipo === 'ENTRADA') {
+        if (t.conta_id === 1) totalEntradasCaixaMes += valorNum;
+        else totalEntradasBancoMes += valorNum;
       } else {
-        if (ehMesAtual) totalSaidasBancoMes += valorNum;
+        if (t.conta_id === 1) {
+          totalSaidasCaixaMes += valorNum;
+          // Regra Automática: Sai do Caixa Físico e entra direto no Banco Sicoob
+          if (isTransferencia) totalEntradasBancoMes += valorNum;
+        } else {
+          totalSaidasBancoMes += valorNum;
+        }
       }
     }
   });
 
-  // 3. Totais Globais do período visível para os cards informativos superiores
+  // 3. Consolidação matemática viva das caixas e saldos
   const totalGeralEntradas = totalEntradasCaixaMes + totalEntradasBancoMes;
   const totalGeralSaidas = totalSaidasCaixaMes + totalSaidasBancoMes;
 
-  // 4. O sistema calcula o saldo atual de forma cumulativa e viva!
-  const saldoAtualCaixa = SALDO_INICIAL_CAIXA_REAL + totalEntradasCaixaMes - totalSaidasCaixaMes;
-  const saldoAtualBanco = SALDO_INICIAL_BANCO_REAL + totalEntradasBancoMes - totalSaidasBancoMes;
+  const saldoAtualCaixa = saldoAcumuladoCaixaAteMes + totalEntradasCaixaMes - totalSaidasCaixaMes;
+  const saldoAtualBanco = saldoAcumuladoBancoAteMes + totalEntradasBancoMes - totalSaidasBancoMes;
   const saldoFinalTotal = saldoAtualCaixa + saldoAtualBanco;
-
-  // ... CÓDIGO DA ESTRUTURA DOS TOTAIS DE CATEGORIAS CONTINUA IGUAL ABAIXO
- 
 
   const totaisCategorias: { [key: string]: { total: number; tipo: string; porcentagem: number } } = {};
   const transacoesDoMes = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro));
@@ -340,7 +357,7 @@ export default function Dashboard() {
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg font-bold" />
       </div>
 
-      {/* Cards de Saldo com matemática real baseada no Mês 08 */}
+            {/* Cards de Saldo com linha de base real acumulada mês a mês */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm relative">
           <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30 print:hidden" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
@@ -348,16 +365,16 @@ export default function Dashboard() {
             {tooltipAtivo === 'caixa' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
                 <p className="font-bold text-emerald-400 mb-1">📋 Histórico do Caixa:</p>
-                <p className="text-zinc-300">Abertura (Fim do Mês 08): <span className="font-mono text-white">R$ 3.146,95</span></p>
-                <p className="text-zinc-300">(+) Entradas no Período: <span className="font-mono text-white">R$ {totalEntradasCaixaMes.toFixed(2)}</span></p>
-                <p className="text-rose-400 font-medium">(-) Saídas no Período: <span className="font-mono">R$ {totalSaidasCaixaMes.toFixed(2)}</span></p>
+                <p className="text-zinc-300">Abertura do Período: <span className="font-mono text-white">R$ {saldoAcumuladoCaixaAteMes.toFixed(2)}</span></p>
+                <p className="text-zinc-300">(+) Entradas do Mês: <span className="font-mono text-white">R$ {totalEntradasCaixaMes.toFixed(2)}</span></p>
+                <p className="text-rose-400 font-medium">(-) Saídas do Mês: <span className="font-mono">R$ {totalSaidasCaixaMes.toFixed(2)}</span></p>
                 <div className="border-t border-zinc-700 my-1.5"></div>
                 <p className="font-bold text-zinc-100">(=) Saldo Atual: <span className="font-mono text-emerald-400">R$ {saldoAtualCaixa.toFixed(2)}</span></p>
               </div>
             )}
           </div>
           <p className="text-xs text-gray-400 uppercase">Caixa Físico</p>
-          <p className="text-sm text-gray-500 font-normal">Abertura: R$ 3.146,95</p>
+          <p className="text-sm text-gray-500 font-normal">Abertura: R$ {saldoAcumuladoCaixaAteMes.toFixed(2)}</p>
           <p className="text-xl text-emerald-600 mt-1">Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
         </div>
 
@@ -367,22 +384,22 @@ export default function Dashboard() {
             {tooltipAtivo === 'sicoob' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
                 <p className="font-bold text-blue-400 mb-1">📋 Histórico Bancário:</p>
-                <p className="text-zinc-300">Abertura (Fim do Mês 08): <span className="font-mono text-white">R$ 97.743,09</span></p>
-                <p className="text-zinc-300">(+) Depósitos / Rendimentos: <span className="font-mono text-white">R$ {totalEntradasBancoMes.toFixed(2)}</span></p>
-                <p className="text-rose-400 font-medium">(-) Despesas / Tarifas: <span className="font-mono">R$ {totalSaidasBancoMes.toFixed(2)}</span></p>
+                <p className="text-zinc-300">Abertura do Período: <span className="font-mono text-white">R$ {saldoAcumuladoBancoAteMes.toFixed(2)}</span></p>
+                <p className="text-zinc-300">(+) Depósitos / Entradas: <span className="font-mono text-white">R$ {totalEntradasBancoMes.toFixed(2)}</span></p>
+                <p className="text-rose-400 font-medium">(-) Tarifas / Saídas: <span className="font-mono">R$ {totalSaidasBancoMes.toFixed(2)}</span></p>
                 <div className="border-t border-zinc-700 my-1.5"></div>
                 <p className="font-bold text-zinc-100">(=) Saldo Atual: <span className="font-mono text-blue-400">R$ {saldoAtualBanco.toFixed(2)}</span></p>
               </div>
             )}
           </div>
           <p className="text-xs text-gray-400 uppercase">Contas Bancárias (Sicoob)</p>
-          <p className="text-sm text-gray-500 font-normal">Abertura: R$ 97.743,09</p>
+          <p className="text-sm text-gray-500 font-normal">Abertura: R$ {saldoAcumuladoBancoAteMes.toFixed(2)}</p>
           <p className="text-xl text-blue-600 mt-1">Atual: R$ {saldoAtualBanco.toFixed(2)}</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border bg-gradient-to-br from-gray-50 to-gray-100 relative">
           <p className="text-xs text-gray-500 uppercase">Disponibilidade Real Total</p>
-          <p className="text-sm text-gray-400 font-normal">Histórico Inicial: R$ 100.890,04</p>
+          <p className="text-sm text-gray-400 font-normal">Abertura Histórica: R$ {(saldoAcumuladoCaixaAteMes + saldoAcumuladoBancoAteMes).toFixed(2)}</p>
           <p className="text-2xl text-gray-800 mt-1">R$ {saldoFinalTotal.toFixed(2)}</p>
         </div>
       </div>
