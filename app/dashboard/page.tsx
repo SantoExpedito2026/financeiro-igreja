@@ -236,9 +236,6 @@ export default function Dashboard() {
     );
   }
 
-  const isAgosto = mesFiltro === "2026-08";
-    // ... CÓDIGO DO FORMULÁRIO DE LOGIN DEIXAR IGUAL
-
     // Linha de base oficial paroquial herdada do fechamento do mês 08 (Agosto)
   const SALDO_INICIAL_CAIXA_REAL = 3146.95;
   const SALDO_INICIAL_BANCO_REAL = 97743.09;
@@ -259,7 +256,7 @@ export default function Dashboard() {
   let totalEntradasBancoMes = 0;
   let totalSaidasBancoMes = 0;
 
-  // Varre a linha do tempo contábil de todas as transações
+  // Varre a linha do tempo contábil de todas as transações (Apenas uma vez!)
   transacoes.forEach(t => {
     const valorNum = Number(t.valor) || 0;
     const dataDoLancamento = t.data_transacao || '';
@@ -292,48 +289,7 @@ export default function Dashboard() {
       } else {
         if (t.conta_id === 1) {
           totalSaidasCaixaMes += valorNum;
-          // Regra Automática: Sai do Caixa Físico e entra direto no Banco Sicoob
-          if (isTransferencia) totalEntradasBancoMes += valorNum;
-        } else {
-          totalSaidasBancoMes += valorNum;
-        }
-      }
-    }
-  });  // Varre a linha do tempo contábil de todas as transações
-  transacoes.forEach(t => {
-    const valorNum = Number(t.valor) || 0;
-    const dataDoLancamento = t.data_transacao || '';
-    
-    const ehMesAnterior = dataDoLancamento < `${mesFiltro}-01`;
-    const ehMesAtual = dataDoLancamento.startsWith(mesFiltro);
-
-    // Identifica se o lançamento atual é a nossa categoria de transferência paroquial
-    const nomeCategoria = t.categorias?.nome?.toLowerCase() || '';
-    const isTransferencia = nomeCategoria.includes('transferência') || nomeCategoria.includes('depósito');
-
-    if (ehMesAnterior) {
-      // --- REGRA DE ACUMULAÇÃO HISTÓRICA (MESES PASSADOS) ---
-      if (t.tipo === 'ENTRADA') {
-        if (t.conta_id === 1) saldoAcumuladoCaixaAteMes += valorNum;
-        else saldoAcumuladoBancoAteMes += valorNum;
-      } else {
-        if (t.conta_id === 1) {
-          saldoAcumuladoCaixaAteMes -= valorNum;
-          // Se saiu do caixa por transferência no passado, entrou no banco no passado
-          if (isTransferencia) saldoAcumuladoBancoAteMes += valorNum;
-        } else {
-          saldoAcumuladoBancoAteMes -= valorNum;
-        }
-      }
-    } else if (ehMesAtual) {
-      // --- REGRA DE FLUXO DO MÊS ATUAL SELECIONADO ---
-      if (t.tipo === 'ENTRADA') {
-        if (t.conta_id === 1) totalEntradasCaixaMes += valorNum;
-        else totalEntradasBancoMes += valorNum;
-      } else {
-        if (t.conta_id === 1) {
-          totalSaidasCaixaMes += valorNum;
-          // SE É UMA TRANSFERÊNCIA ATUAL: O dinheiro sai do caixa e entra AUTOMATICAMENTE no banco Sicoob
+          // Regra Automática Paroquial: Sai do Caixa Físico e entra direto no Banco Sicoob
           if (isTransferencia) totalEntradasBancoMes += valorNum;
         } else {
           totalSaidasBancoMes += valorNum;
@@ -342,9 +298,18 @@ export default function Dashboard() {
     }
   });
 
-  // 3. Consolidação matemática viva das caixas e saldos
-  const totalGeralEntradas = totalEntradasCaixaMes + totalEntradasBancoMes;
-  const totalGeralSaidas = totalSaidasCaixaMes + totalSaidasBancoMes;
+      // 3. Consolidação matemática viva das caixas e saldos (Deduzindo transferências internas dos totais)
+  let totalTransferidoMes = 0;
+  transacoesFiltradas.forEach(t => {
+    const nomeCat = t.categorias?.nome?.toLowerCase() || '';
+    if (t.tipo === 'SAIDA' && t.conta_id === 1 && (nomeCat.includes('transferência') || nomeCat.includes('depósito'))) {
+      totalTransferidoMes += Number(t.valor) || 0;
+    }
+  });
+
+  // Os totais mensais agora refletem apenas a movimentação operacional real de setembro
+  const totalGeralEntradas = totalEntradasCaixaMes + totalEntradasBancoMes - totalTransferidoMes;
+  const totalGeralSaidas = totalSaidasCaixaMes + totalSaidasBancoMes - totalTransferidoMes;
 
   const saldoAtualCaixa = saldoAcumuladoCaixaAteMes + totalEntradasCaixaMes - totalSaidasCaixaMes;
   const saldoAtualBanco = saldoAcumuladoBancoAteMes + totalEntradasBancoMes - totalSaidasBancoMes;
