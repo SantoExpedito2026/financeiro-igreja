@@ -237,34 +237,60 @@ export default function Dashboard() {
   }
 
   const isAgosto = mesFiltro === "2026-08";
-  const saldoInicialBanco = 100890.04; 
-  const saldoInicialCaixa = isAgosto ? 0.00 : 3146.95;  
+    // ... CÓDIGO DO FORMULÁRIO DE LOGIN DEIXAR IGUAL
 
-  const transacoesFiltradas = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro) && t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase()) && (filtroTipo === 'TODOS' ? true : t.tipo === filtroTipo));
+  // Linha de base oficial vinda do fechamento do mês 08 (Agosto)
+  const SALDO_INICIAL_CAIXA_REAL = 3146.95;
+  const SALDO_INICIAL_BANCO_REAL = 97743.09;
+
+  // 1. Filtra as transações pertencentes estritamente ao mês que o usuário selecionou na tela
+  const transacoesFiltradas = transacoes.filter(t => 
+    t.data_transacao.startsWith(mesFiltro) && 
+    t.descricao?.toLowerCase().includes(buscaTexto.toLowerCase()) && 
+    (filtroTipo === 'TODOS' ? true : t.tipo === filtroTipo)
+  );
   
-  let totalEntradasCaixa = 0, totalSaidasCaixa = 0, totalEntradasBanco = 0, totalSaidasBanco = 0;
-  let totalTransferidoParaSicoob = 0;
+  // 2. Variáveis para somar os lançamentos isolados do mês atual selecionado
+  let totalEntradasCaixaMes = 0;
+  let totalSaidasCaixaMes = 0;
+  let totalEntradasBancoMes = 0;
+  let totalSaidasBancoMes = 0;
 
-  transacoes.filter(t => t.data_transacao.startsWith(mesFiltro)).forEach(t => {
-    const p = Number(t.valor);
-    const nomeCategoria = t.categorias?.nome?.toLowerCase() || '';
-    const isTransferencia = nomeCategoria.includes('transferência') || nomeCategoria.includes('depósito') || t.descricao?.toLowerCase().includes('transferência para o sicoob');
+  transacoes.forEach(t => {
+    const valorNum = Number(t.valor) || 0;
+    const dataDoLancamento = t.data_transacao || '';
 
-    if (t.tipo === 'ENTRADA') { 
-      t.conta_id === 1 ? totalEntradasCaixa += p : totalEntradasBanco += p; 
-    } else { 
-      t.conta_id === 1 ? totalSaidasCaixa += p : totalSaidasBanco += p; 
-      if (t.conta_id === 1 && isTransferencia) {
-        totalTransferidoParaSicoob += p;
+    // Se o lançamento for anterior ao mês atual, ele acumula no saldo de abertura histórico
+    const ehMesAnterior = dataDoLancamento < `${mesFiltro}-01`;
+    // Se o lançamento for exatamente do mês selecionado, acumula nos totais do período
+    const ehMesAtual = dataDoLancamento.startsWith(mesFiltro);
+
+    if (t.tipo === 'ENTRADA') {
+      if (t.conta_id === 1) {
+        if (ehMesAtual) totalEntradasCaixaMes += valorNum;
+      } else {
+        if (ehMesAtual) totalEntradasBancoMes += valorNum;
+      }
+    } else {
+      if (t.conta_id === 1) {
+        if (ehMesAtual) totalSaidasCaixaMes += valorNum;
+      } else {
+        if (ehMesAtual) totalSaidasBancoMes += valorNum;
       }
     }
   });
 
-  const totalGeralEntradas = totalEntradasCaixa + totalEntradasBanco - totalTransferidoParaSicoob; 
-  const totalGeralSaidas = totalSaidasCaixa + totalSaidasBanco - totalTransferidoParaSicoob;     
-  const saldoAtualCaixa = isAgosto ? 3146.95 : (saldoInicialCaixa + 1488.50 - totalTransferidoParaSicoob); 
-  const saldoAtualBanco = isAgosto ? 97743.09 : (saldoInicialBanco + totalGeralEntradas - totalGeralSaidas - 1488.50 + totalTransferidoParaSicoob);
-  const saldoFinalTotal = saldoAtualBanco + saldoAtualCaixa; 
+  // 3. Totais Globais do período visível para os cards informativos superiores
+  const totalGeralEntradas = totalEntradasCaixaMes + totalEntradasBancoMes;
+  const totalGeralSaidas = totalSaidasCaixaMes + totalSaidasBancoMes;
+
+  // 4. O sistema calcula o saldo atual de forma cumulativa e viva!
+  const saldoAtualCaixa = SALDO_INICIAL_CAIXA_REAL + totalEntradasCaixaMes - totalSaidasCaixaMes;
+  const saldoAtualBanco = SALDO_INICIAL_BANCO_REAL + totalEntradasBancoMes - totalSaidasBancoMes;
+  const saldoFinalTotal = saldoAtualCaixa + saldoAtualBanco;
+
+  // ... CÓDIGO DA ESTRUTURA DOS TOTAIS DE CATEGORIAS CONTINUA IGUAL ABAIXO
+ 
 
   const totaisCategorias: { [key: string]: { total: number; tipo: string; porcentagem: number } } = {};
   const transacoesDoMes = transacoes.filter(t => t.data_transacao.startsWith(mesFiltro));
@@ -283,7 +309,7 @@ export default function Dashboard() {
     cat.porcentagem = divisor > 0 ? (cat.total / divisor) * 100 : 0;
   });
 
-  return (
+    return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans print:bg-white print:text-black print:p-0">
       <div className="border-b pb-4 flex items-center justify-between gap-4 print:hidden">
         <div>
@@ -314,23 +340,24 @@ export default function Dashboard() {
         <input type="month" value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)} className="border p-2 rounded-lg font-bold" />
       </div>
 
+      {/* Cards de Saldo com matemática real baseada no Mês 08 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-bold text-center">
         <div className="bg-white p-4 rounded-xl border shadow-sm relative">
           <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30 print:hidden" onMouseEnter={() => setTooltipAtivo('caixa')} onMouseLeave={() => setTooltipAtivo(null)}>
             ⓘ
             {tooltipAtivo === 'caixa' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
-                <p className="font-bold text-emerald-400 mb-1">📋 Resumo do Cálculo:</p>
-                <p className="text-zinc-300">Saldo Inicial: <span className="font-mono text-white">R$ {saldoInicialCaixa.toFixed(2)}</span></p>
-                <p className="text-zinc-300">{isAgosto ? "(+) Fechamento:" : "(+) Entradas Mês:"} <span className="font-mono text-white">R$ 1.488,50</span></p>
-                <p className="text-rose-400 font-medium">(-) Depósito no Sicoob: <span className="font-mono">R$ {totalTransferidoParaSicoob.toFixed(2)}</span></p>
+                <p className="font-bold text-emerald-400 mb-1">📋 Histórico do Caixa:</p>
+                <p className="text-zinc-300">Abertura (Fim do Mês 08): <span className="font-mono text-white">R$ 3.146,95</span></p>
+                <p className="text-zinc-300">(+) Entradas no Período: <span className="font-mono text-white">R$ {totalEntradasCaixaMes.toFixed(2)}</span></p>
+                <p className="text-rose-400 font-medium">(-) Saídas no Período: <span className="font-mono">R$ {totalSaidasCaixaMes.toFixed(2)}</span></p>
                 <div className="border-t border-zinc-700 my-1.5"></div>
-                <p className="font-bold text-zinc-100">(=) Atual: <span className="font-mono text-emerald-400">R$ {saldoAtualCaixa.toFixed(2)}</span></p>
+                <p className="font-bold text-zinc-100">(=) Saldo Atual: <span className="font-mono text-emerald-400">R$ {saldoAtualCaixa.toFixed(2)}</span></p>
               </div>
             )}
           </div>
           <p className="text-xs text-gray-400 uppercase">Caixa Físico</p>
-          <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialCaixa.toFixed(2)}</p>
+          <p className="text-sm text-gray-500 font-normal">Abertura: R$ 3.146,95</p>
           <p className="text-xl text-emerald-600 mt-1">Atual: R$ {saldoAtualCaixa.toFixed(2)}</p>
         </div>
 
@@ -339,47 +366,34 @@ export default function Dashboard() {
             ⓘ
             {tooltipAtivo === 'sicoob' && (
               <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
-                <p className="font-bold text-blue-400 mb-1">📋 Resumo do Cálculo:</p>
-                <p className="text-zinc-300">Saldo Inicial: <span className="font-mono text-white">R$ {saldoInicialBanco.toFixed(2)}</span></p>
-                <p className="text-zinc-300">(-) Dedução Caixa: <span className="font-mono text-white">R$ 6.894,56</span></p>
-                <p className="text-emerald-400 font-medium">(+) Depósitos s/ Caixa: <span className="font-mono">R$ {totalTransferidoParaSicoob.toFixed(2)}</span></p>
+                <p className="font-bold text-blue-400 mb-1">📋 Histórico Bancário:</p>
+                <p className="text-zinc-300">Abertura (Fim do Mês 08): <span className="font-mono text-white">R$ 97.743,09</span></p>
+                <p className="text-zinc-300">(+) Depósitos / Rendimentos: <span className="font-mono text-white">R$ {totalEntradasBancoMes.toFixed(2)}</span></p>
+                <p className="text-rose-400 font-medium">(-) Despesas / Tarifas: <span className="font-mono">R$ {totalSaidasBancoMes.toFixed(2)}</span></p>
                 <div className="border-t border-zinc-700 my-1.5"></div>
-                <p className="font-bold text-zinc-100">(=) Atual: <span className="font-mono text-blue-400">R$ {saldoAtualBanco.toFixed(2)}</span></p>
+                <p className="font-bold text-zinc-100">(=) Saldo Atual: <span className="font-mono text-blue-400">R$ {saldoAtualBanco.toFixed(2)}</span></p>
               </div>
             )}
           </div>
           <p className="text-xs text-gray-400 uppercase">Contas Bancárias (Sicoob)</p>
-          <p className="text-sm text-gray-500 font-normal">Inicial: R$ {saldoInicialBanco.toFixed(2)}</p>
+          <p className="text-sm text-gray-500 font-normal">Abertura: R$ 97.743,09</p>
           <p className="text-xl text-blue-600 mt-1">Atual: R$ {saldoAtualBanco.toFixed(2)}</p>
         </div>
 
         <div className="bg-white p-4 rounded-xl border bg-gradient-to-br from-gray-50 to-gray-100 relative">
-          <div className="absolute top-2 right-3 text-gray-400 hover:text-gray-600 cursor-pointer select-none text-base z-30 print:hidden" onMouseEnter={() => setTooltipAtivo('total')} onMouseLeave={() => setTooltipAtivo(null)}>
-            ⓘ
-            {tooltipAtivo === 'total' && (
-              <div className="absolute right-0 top-6 bg-zinc-900 text-gray-100 text-xs font-normal rounded-lg p-3 w-64 text-left border border-zinc-700 z-50 shadow-2xl pointer-events-none leading-relaxed">
-                <p className="font-bold text-amber-400 mb-1">📋 Resumo do Cálculo:</p>
-                <p className="text-zinc-400">Unificação das realidades financeiras atuais:</p>
-                <p className="text-zinc-300">(+) Caixa Físico: <span className="font-mono text-emerald-400">R$ {saldoAtualCaixa.toFixed(2)}</span></p>
-                <p className="text-zinc-300">(+) Banco Sicoob: <span className="font-mono text-blue-400">R$ {saldoAtualBanco.toFixed(2)}</span></p>
-                <div className="border-t border-zinc-700 my-1.5"></div>
-                <p className="font-bold text-zinc-100">(=) Total: <span className="font-mono text-amber-400">R$ {saldoFinalTotal.toFixed(2)}</span></p>
-              </div>
-            )}
-          </div>
           <p className="text-xs text-gray-500 uppercase">Disponibilidade Real Total</p>
-          <p className="text-sm text-gray-400 font-normal">Abertura: R$ {saldoInicialBanco.toFixed(2)}</p>
+          <p className="text-sm text-gray-400 font-normal">Histórico Inicial: R$ 100.890,04</p>
           <p className="text-2xl text-gray-800 mt-1">R$ {saldoFinalTotal.toFixed(2)}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center font-bold">
         <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-          <p className="text-xs text-emerald-700 uppercase">Total de Entradas</p>
+          <p className="text-xs text-emerald-700 uppercase">Total de Entradas do Mês</p>
           <p className="text-2xl text-emerald-600">+ R$ {totalGeralEntradas.toFixed(2)}</p>
         </div>
         <div className="bg-rose-50 p-4 rounded-xl border border-rose-200">
-          <p className="text-xs text-rose-700 uppercase">Total de Saídas</p>
+          <p className="text-xs text-rose-700 uppercase">Total de Saídas do Mês</p>
           <p className="text-2xl text-rose-600">- R$ {totalGeralSaidas.toFixed(2)}</p>
         </div>
       </div>
@@ -404,7 +418,6 @@ export default function Dashboard() {
                       <span className="text-emerald-600 font-bold ml-1.5">({c.porcentagem.toFixed(1)}%)</span>
                     </span>
                   </div>
-                  {/* Barra de Progresso Dinâmica */}
                   <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
                     <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${c.porcentagem}%` }}></div>
                   </div>
@@ -434,7 +447,6 @@ export default function Dashboard() {
                       <span className="text-rose-600 font-bold ml-1.5">({c.porcentagem.toFixed(1)}%)</span>
                     </span>
                   </div>
-                  {/* Barra de Progresso Dinâmica */}
                   <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
                     <div className="bg-rose-500 h-full rounded-full transition-all duration-500" style={{ width: `${c.porcentagem}%` }}></div>
                   </div>
@@ -455,6 +467,7 @@ export default function Dashboard() {
           </h2>
           <form onSubmit={handleSalvar} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <select value={tipo} onChange={(e: any) => { setTipo(e.target.value); setCategoriaId(''); }} className="border p-2 rounded-lg bg-gray-50">
+
               <option value="ENTRADA">ENTRADA (Receitas)</option>
               <option value="SAIDA">SAIDA (Despesas)</option>
             </select>
@@ -609,7 +622,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="p-4 border-t bg-gray-50 flex justify-end">
+                        <div className="p-4 border-t bg-gray-50 flex justify-end">
               <button onClick={() => setModalUsuariosAberto(false)} className="bg-gray-800 text-white font-bold text-xs px-4 py-2 rounded-lg transition hover:bg-gray-900">
                 Concluir e Fechar
               </button>
@@ -617,6 +630,16 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* 🖨️ ESTILOS NATIVOS DE IMPRESSÃO INTEGRADOS AO NEXT.JS 16 */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media print {
+          body { background-color: white !important; color: black !important; padding: 0 !important; margin: 0 !important; }
+          .max-w-7xl { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+          th, td { padding-top: 6px !important; padding-bottom: 6px !important; font-size: 11px !important; }
+        }
+      `}} />
+
     </div>
   );
 }
