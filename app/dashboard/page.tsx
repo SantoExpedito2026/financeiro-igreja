@@ -299,6 +299,47 @@ export default function Dashboard() {
         }
       }
     }
+  });  // Varre a linha do tempo contábil de todas as transações
+  transacoes.forEach(t => {
+    const valorNum = Number(t.valor) || 0;
+    const dataDoLancamento = t.data_transacao || '';
+    
+    const ehMesAnterior = dataDoLancamento < `${mesFiltro}-01`;
+    const ehMesAtual = dataDoLancamento.startsWith(mesFiltro);
+
+    // Identifica se o lançamento atual é a nossa categoria de transferência paroquial
+    const nomeCategoria = t.categorias?.nome?.toLowerCase() || '';
+    const isTransferencia = nomeCategoria.includes('transferência') || nomeCategoria.includes('depósito');
+
+    if (ehMesAnterior) {
+      // --- REGRA DE ACUMULAÇÃO HISTÓRICA (MESES PASSADOS) ---
+      if (t.tipo === 'ENTRADA') {
+        if (t.conta_id === 1) saldoAcumuladoCaixaAteMes += valorNum;
+        else saldoAcumuladoBancoAteMes += valorNum;
+      } else {
+        if (t.conta_id === 1) {
+          saldoAcumuladoCaixaAteMes -= valorNum;
+          // Se saiu do caixa por transferência no passado, entrou no banco no passado
+          if (isTransferencia) saldoAcumuladoBancoAteMes += valorNum;
+        } else {
+          saldoAcumuladoBancoAteMes -= valorNum;
+        }
+      }
+    } else if (ehMesAtual) {
+      // --- REGRA DE FLUXO DO MÊS ATUAL SELECIONADO ---
+      if (t.tipo === 'ENTRADA') {
+        if (t.conta_id === 1) totalEntradasCaixaMes += valorNum;
+        else totalEntradasBancoMes += valorNum;
+      } else {
+        if (t.conta_id === 1) {
+          totalSaidasCaixaMes += valorNum;
+          // SE É UMA TRANSFERÊNCIA ATUAL: O dinheiro sai do caixa e entra AUTOMATICAMENTE no banco Sicoob
+          if (isTransferencia) totalEntradasBancoMes += valorNum;
+        } else {
+          totalSaidasBancoMes += valorNum;
+        }
+      }
+    }
   });
 
   // 3. Consolidação matemática viva das caixas e saldos
