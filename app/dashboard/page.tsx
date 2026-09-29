@@ -202,11 +202,25 @@ export default function Dashboard() {
     setArquivo(null);
   }
 
-  async function handleDeletar(id: number) {
+    async function handleDeletar(id: any) {
+    // Trava de segurança para exclusão
     if (perfil?.regra === 'LEITOR') return alert('Seu perfil não tem permissão para excluir registros.');
     if (!confirm('Deseja realmente excluir este lançamento?')) return;
-    await supabase.from('transacoes').delete().eq('id', id); 
-    if (sessao) carregarDadosEPerfil(sessao.user.id);
+    
+    // Força a conversão do id para número inteiro antes de enviar ao Supabase
+    const idNumerico = parseInt(id, 10);
+
+    const { error } = await supabase
+      .from('transacoes')
+      .delete()
+      .eq('id', idNumerico);
+
+    if (error) {
+      alert(`Erro ao excluir no banco de dados: ${error.message}`);
+    } else {
+      // Recarrega a listagem atualizada da sessão imediatamente após apagar
+      if (sessao) carregarDadosEPerfil(sessao.user.id);
+    }
   }
   if (loading) return <div className="p-8 text-center">Carregando permissões do painel...</div>;
   if (!sessao) {
