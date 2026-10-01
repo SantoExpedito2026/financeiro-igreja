@@ -236,7 +236,7 @@ export default function Dashboard() {
     );
   }
 
-    // Linha de base oficial paroquial herdada do fechamento do mês 08 (Agosto)
+        // Linha de base oficial paroquial herdada do fechamento do mês 08 (Agosto)
   const SALDO_INICIAL_CAIXA_REAL = 3146.95;
   const SALDO_INICIAL_BANCO_REAL = 97743.09;
 
@@ -247,16 +247,20 @@ export default function Dashboard() {
     (filtroTipo === 'TODOS' ? true : t.tipo === filtroTipo)
   );
   
-  // 2. Variáveis dinâmicas para acumular os meses passados e processar o período atual
+  // 2. Linhas de base dinâmicas que acumularão o histórico passado antes do mês atual
   let saldoAcumuladoCaixaAteMes = SALDO_INICIAL_CAIXA_REAL;
   let saldoAcumuladoBancoAteMes = SALDO_INICIAL_BANCO_REAL;
 
+  // Variáveis isoladas para monitorar as movimentações operacionais do mês atual
   let totalEntradasCaixaMes = 0;
   let totalSaidasCaixaMes = 0;
   let totalEntradasBancoMes = 0;
   let totalSaidasBancoMes = 0;
 
-  // Varre a linha do tempo contábil de todas as transações (Apenas uma vez!)
+  // Variáveis para consolidar as transferências internas (Dinheiro que mudou de lugar)
+  let transaçõesDeTransferenciaAtuaisParaBanco = 0;
+
+  // Varre a linha do tempo contábil de todas as transações (Apenas uma única vez)
   transacoes.forEach(t => {
     const valorNum = Number(t.valor) || 0;
     const dataDoLancamento = t.data_transacao || '';
@@ -264,55 +268,48 @@ export default function Dashboard() {
     const ehMesAnterior = dataDoLancamento < `${mesFiltro}-01`;
     const ehMesAtual = dataDoLancamento.startsWith(mesFiltro);
 
-    // Identifica de forma automatizada depósitos e transferências internas para o Sicoob
+    // Identifica se o lançamento atual pertence à categoria de transferência ou depósito interno
     const nomeCategoria = t.categorias?.nome?.toLowerCase() || '';
     const isTransferencia = nomeCategoria.includes('transferência') || nomeCategoria.includes('depósito');
 
     if (ehMesAnterior) {
-      // --- REGRA DE ACUMULAÇÃO HISTÓRICA DE MESES PASSADOS ---
-      if (t.tipo === 'ENTRADA') {
+      // --- HISTÓRICO DOS MESES PASSADOS ---
+      if (isTransferencia) {
+        // Se foi uma transferência no passado: tira do histórico do caixa e joga no histórico do banco
+        saldoAcumuladoCaixaAteMes -= valorNum;
+        saldoAcumuladoBancoAteMes += valorNum;
+      } else if (t.tipo === 'ENTRADA') {
         if (t.conta_id === 1) saldoAcumuladoCaixaAteMes += valorNum;
         else saldoAcumuladoBancoAteMes += valorNum;
       } else {
-        if (t.conta_id === 1) {
-          saldoAcumuladoCaixaAteMes -= valorNum;
-          if (isTransferencia) saldoAcumuladoBancoAteMes += valorNum;
-        } else {
-          saldoAcumuladoBancoAteMes -= valorNum;
-        }
+        if (t.conta_id === 1) saldoAcumuladoCaixaAteMes -= valorNum;
+        else saldoAcumuladoBancoAteMes -= valorNum;
       }
     } else if (ehMesAtual) {
-      // --- REGRA DE FLUXO DO MÊS SELECIONADO NA TELA ---
-      if (t.tipo === 'ENTRADA') {
+      // --- FLUXO DO MÊS ATUAL SELECIONADO NA TELA ---
+      if (isTransferencia) {
+        // Se é uma transferência atual: acumula no rastreador para ajustar os saldos finais
+        transaçõesDeTransferenciaAtuaisParaBanco += valorNum;
+      } else if (t.tipo === 'ENTRADA') {
         if (t.conta_id === 1) totalEntradasCaixaMes += valorNum;
         else totalEntradasBancoMes += valorNum;
       } else {
-        if (t.conta_id === 1) {
-          totalSaidasCaixaMes += valorNum;
-          // Regra Automática Paroquial: Sai do Caixa Físico e entra direto no Banco Sicoob
-          if (isTransferencia) totalEntradasBancoMes += valorNum;
-        } else {
-          totalSaidasBancoMes += valorNum;
-        }
+        if (t.conta_id === 1) totalSaidasCaixaMes += valorNum;
+        else totalSaidasBancoMes += valorNum;
       }
     }
   });
 
-      // 3. Consolidação matemática viva das caixas e saldos (Deduzindo transferências internas dos totais)
-  let totalTransferidoMes = 0;
-  transacoesFiltradas.forEach(t => {
-    const nomeCat = t.categorias?.nome?.toLowerCase() || '';
-    if (t.tipo === 'SAIDA' && t.conta_id === 1 && (nomeCat.includes('transferência') || nomeCat.includes('depósito'))) {
-      totalTransferidoMes += Number(t.valor) || 0;
-    }
-  });
+  // 3. Consolidação Matemática Operacional Real (Dízimos, Ofertas e Despesas Reais)
+  const totalGeralEntradas = totalEntradasCaixaMes + totalEntradasBancoMes;
+  const totalGeralSaidas = totalSaidasCaixaMes + totalSaidasBancoMes;
 
-  // Os totais mensais agora refletem apenas a movimentação operacional real de setembro
-  const totalGeralEntradas = totalEntradasCaixaMes + totalEntradasBancoMes - totalTransferidoMes;
-  const totalGeralSaidas = totalSaidasCaixaMes + totalSaidasBancoMes - totalTransferidoMes;
-
-  const saldoAtualCaixa = saldoAcumuladoCaixaAteMes + totalEntradasCaixaMes - totalSaidasCaixaMes;
-  const saldoAtualBanco = saldoAcumuladoBancoAteMes + totalEntradasBancoMes - totalSaidasBancoMes;
+  // O Caixa Físico (Caixa Secretaria) deduz as saídas reais e as transferências enviadas ao banco
+  const saldoAtualCaixa = saldoAcumuladoCaixaAteMes + totalEntradasCaixaMes - totalSaidasCaixaMes - transaçõesDeTransferenciaAtuaisParaBanco;
+  
+  // O Banco Sicoob soma as entradas operacionais reais e recebe o montante transferido do caixa secretaria
+  const saldoAtualBanco = saldoAcumuladoBancoAteMes + totalEntradasBancoMes + transaçõesDeTransferenciaAtuaisParaBanco - totalSaidasBancoMes;
+  
   const saldoFinalTotal = saldoAtualCaixa + saldoAtualBanco;
 
   const totaisCategorias: { [key: string]: { total: number; tipo: string; porcentagem: number } } = {};
@@ -452,26 +449,26 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Gráfico de Saídas */}
+                {/* Gráfico de Saídas Atualizado */}
         <div className="bg-white p-5 rounded-xl border shadow-sm">
           <h3 className="text-sm font-bold text-rose-700 uppercase mb-4 flex items-center gap-1.5">
             📊 Destinação de Recursos (Despesas)
           </h3>
           <div className="space-y-4">
             {Object.entries(totaisCategorias)
-              .filter(([_, c]) => c.tipo === 'SAIDA')
+              .filter(([n, c]) => c.tipo === 'SAIDA' && !n.toLowerCase().includes('transferência') && !n.toLowerCase().includes('depósito'))
               .sort((a, b) => b[1].total - a[1].total)
               .map(([n, c]) => (
                 <div key={n} className="space-y-1">
                   <div className="flex justify-between text-xs font-medium text-gray-600">
                     <span className="font-bold text-gray-700">{n}</span>
                     <span>
-                      R$ {c.total.toFixed(2)} 
-                      <span className="text-rose-600 font-bold ml-1.5">({c.porcentagem.toFixed(1)}%)</span>
+                      R\$ {c.total.toFixed(2)} 
+                      <span className="text-rose-600 font-bold ml-1.5">({((c.total / totalGeralSaidas) * 100).toFixed(1)}%)</span>
                     </span>
                   </div>
                   <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-rose-500 h-full rounded-full transition-all duration-500" style={{ width: `${c.porcentagem}%` }}></div>
+                    <div className="bg-rose-500 h-full rounded-full transition-all duration-500" style={{ width: `${(c.total / totalGeralSaidas) * 100}%` }}></div>
                   </div>
                 </div>
               ))}
