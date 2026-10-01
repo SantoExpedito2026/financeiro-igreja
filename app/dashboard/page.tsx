@@ -536,11 +536,12 @@ export default function Dashboard() {
 
         <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block text-center border-b pb-2">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
         <table className="w-full text-left border-collapse">
-          <thead>
+                    <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
-              <th className="pb-3 w-[15%]">Data</th>
-              <th className="pb-3 w-[35%]">Descrição</th>
-              <th className="pb-3 w-[23%]">Categoria</th>
+              <th className="pb-3 w-[12%]">Data</th>
+              <th className="pb-3 w-[28%]">Descrição</th>
+              <th className="pb-3 w-[18%]">Categoria</th>
+              <th className="pb-3 w-[15%]">Conta</th> {/* Nova coluna adicionada */}
               <th className="pb-3 text-center w-[10%]">Doc</th>
               <th className="pb-3 text-right w-[17%]">Valor</th>
               {perfil?.regra !== 'LEITOR' && <th className="pb-3 text-center print:hidden w-[10%]">Ações</th>}
@@ -550,9 +551,9 @@ export default function Dashboard() {
             {transacoesFiltradas.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50 print:hover:bg-transparent">
                 <td className="py-3 whitespace-nowrap">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                <td className="py-3 font-bold text-gray-800 pr-2">{t.descricao}</td>
-                <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
-                                <td className="py-3 text-center">
+               <td className="py-3 font-medium text-gray-700">{t.contas?.nome || 'Não informada'}</td>
+                
+                <td className="py-3 text-center">
                   {t.url_comprovante ? (
                     <a 
                       href={t.url_comprovante} 
