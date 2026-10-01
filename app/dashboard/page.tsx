@@ -536,22 +536,27 @@ export default function Dashboard() {
 
         <h2 className="text-xl font-bold text-gray-700 mb-4 hidden print:block text-center border-b pb-2">📋 Relatório Mensal de Lançamentos - Comunidade Santo Expedito</h2>
         <table className="w-full text-left border-collapse">
-                    <thead>
+          <thead>
             <tr className="border-b text-gray-400 uppercase text-xs">
               <th className="pb-3 w-[12%]">Data</th>
-              <th className="pb-3 w-[28%]">Descrição</th>
-              <th className="pb-3 w-[18%]">Categoria</th>
-              <th className="pb-3 w-[15%]">Conta</th> {/* Nova coluna adicionada */}
-              <th className="pb-3 text-center w-[10%]">Doc</th>
-              <th className="pb-3 text-right w-[17%]">Valor</th>
+              <th className="pb-3 w-[30%]">Descrição</th>
+              <th className="pb-3 w-[20%]">Categoria</th>
+              <th className="pb-3 w-[15%]">Conta</th> {/* Coluna nova inserida sem mexer nas outras */}
+              <th className="pb-3 text-center w-[8%]">Doc</th>
+              <th className="pb-3 text-right w-[15%]">Valor</th>
               {perfil?.regra !== 'LEITOR' && <th className="pb-3 text-center print:hidden w-[10%]">Ações</th>}
             </tr>
           </thead>
-          <tbody className="divide-y text-sm text-gray-600">
+
+                   <tbody className="divide-y text-sm text-gray-600">
             {transacoesFiltradas.map((t) => (
               <tr key={t.id} className="hover:bg-gray-50 print:hover:bg-transparent">
                 <td className="py-3 whitespace-nowrap">{new Date(t.data_transacao + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-               <td className="py-3 font-medium text-gray-700">{t.contas?.nome || 'Não informada'}</td>
+                <td className="py-3 font-bold text-gray-800 pr-2">{t.descricao}</td>
+                <td className="py-3">{t.categorias?.nome || 'Sem categoria'}</td>
+                
+                {/* Coluna da Conta restaurada perfeitamente na ordem correta */}
+                <td className="py-3 font-medium text-gray-600">{t.contas?.nome || 'Não informada'}</td>
                 
                 <td className="py-3 text-center">
                   {t.url_comprovante ? (
@@ -586,7 +591,7 @@ export default function Dashboard() {
             ))}
             {transacoesFiltradas.length === 0 && (
               <tr>
-                <td colSpan={perfil?.regra !== 'LEITOR' ? 6 : 5} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado.</td>
+                <td colSpan={perfil?.regra !== 'LEITOR' ? 7 : 6} className="py-8 text-center text-gray-400">Nenhum lançamento encontrado.</td>
               </tr>
             )}
           </tbody>
