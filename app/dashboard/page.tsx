@@ -329,19 +329,28 @@ export default function Dashboard() {
     cat.porcentagem = divisor > 0 ? (cat.total / divisor) * 100 : 0;
   });
 
-    return (
+      return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 bg-gray-50 min-h-screen font-sans print:bg-white print:text-black print:p-0">
-      <div className="border-b pb-4 flex items-center justify-between gap-4 print:hidden">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-gray-500 text-sm">Painel de Gestão e Fluxo de Caixa</p>
-            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full uppercase">
-              {perfil?.regra || 'Buscando Perfil...'}
-            </span>
+      <div className="border-b pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+        {/* Bloco Unificado: Logo Paroquial + Títulos */}
+        <div className="flex items-center gap-4">
+          <img 
+            src="/logo-padroeiro.png" 
+            alt="Brasão Santo Expedito" 
+            className="w-16 h-16 object-contain rounded-lg bg-white p-1 border shadow-sm"
+          />
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800">Comunidade Santo Expedito</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-gray-500 text-sm">Painel de Gestão e Fluxo de Caixa</p>
+              <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-0.5 rounded-full uppercase">
+                {perfil?.regra || 'Buscando Perfil...'}
+              </span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           {perfil?.regra === 'ADMINISTRADOR' && (
             <button 
               onClick={() => { carregarListaUsuarios(); setModalUsuariosAberto(true); }} 
