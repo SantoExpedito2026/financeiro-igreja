@@ -222,7 +222,7 @@ export default function Dashboard() {
       if (sessao) carregarDadosEPerfil(sessao.user.id);
     }
   }
-    if (loading) return <div className="p-8 text-center">Carregando permissões do painel...</div>;
+     if (loading) return <div className="p-8 text-center">Carregando permissões do painel...</div>;
   if (!sessao) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
