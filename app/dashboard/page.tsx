@@ -222,15 +222,23 @@ export default function Dashboard() {
       if (sessao) carregarDadosEPerfil(sessao.user.id);
     }
   }
-  if (loading) return <div className="p-8 text-center">Carregando permissões do painel...</div>;
+    if (loading) return <div className="p-8 text-center">Carregando permissões do painel...</div>;
   if (!sessao) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-        <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-md max-w-md w-full space-y-4">
-          <h1 className="text-2xl font-bold text-center">Comunidade Santo Expedito</h1>
+        <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-md max-w-md w-full space-y-4 flex flex-col items-center">
+          
+          {/* Logo Paroquial Centralizada */}
+          <img 
+            src="/logo-padroeiro.png" 
+            alt="Brasão Santo Expedito" 
+            className="w-24 h-26 object-contain mb-2 rounded-lg bg-white p-1 border shadow-sm"
+          />
+
+          <h1 className="text-2xl font-bold text-center text-gray-800 w-full">Comunidade Santo Expedito</h1>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" className="w-full border p-2 rounded-lg" required />
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha" className="w-full border p-2 rounded-lg" required />
-          <button type="submit" disabled={autenticando} className="w-full bg-blue-600 text-white p-2 rounded-lg font-bold">{autenticando ? 'Acessando...' : 'Acessar'}</button>
+          <button type="submit" disabled={autenticando} className="w-full bg-blue-600 text-white p-2 rounded-lg font-bold hover:bg-blue-700 transition">{autenticando ? 'Acessando...' : 'Acessar'}</button>
         </form>
       </div>
     );
